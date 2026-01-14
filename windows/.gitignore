@@ -27,3 +27,18 @@ Thumbs.db
 .vscode/
 .idea/
 *.iml
+
+# Firebase 임시 파일 제외
+.firebase/
+firebase-debug.log
+
+# 빌드 결과물 제외
+build/
+
+# IDE 설정 파일 제외
+.idea/
+.vscode/
+
+# 운영체제 임시 파일
+.DS_Store
+Thumbs.db
