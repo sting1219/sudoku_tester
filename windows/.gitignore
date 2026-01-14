@@ -1,8 +1,0 @@
-# 윈도우 전용 무시 설정
-Visual Studio 캐시 및 빌드 결과물들
-.vs/
-out/
-build/
-*.user
-*.suo
-*.sln.docstates
