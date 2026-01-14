@@ -1,44 +1,8 @@
-# Firebase 관련 (가장 중요)
-# -----------------------
-# Firebase CLI가 사용하는 임시 설정 파일 (내 로컬 환경 정보가 들어있음)
-.firebase/
-# Firebase 실행 시 생성되는 로그
-firebase-debug.log
-*.log
-
-# 빌드 결과물 (용량이 매우 큼)
-# -----------------------
+# 윈도우 전용 무시 설정
+Visual Studio 캐시 및 빌드 결과물들
+.vs/
+out/
 build/
-
-# 환경 설정 및 비밀 키 (보안 위험)
-# -----------------------
-.env
-*.p12
-*.jks
-*.keystore
-
-# 운영체제 관련 파일
-# -----------------------
-.DS_Store
-Thumbs.db
-
-# 툴 관련 (VS Code, Android Studio)
-# -----------------------
-.vscode/
-.idea/
-*.iml
-
-# Firebase 임시 파일 제외
-.firebase/
-firebase-debug.log
-
-# 빌드 결과물 제외
-build/
-
-# IDE 설정 파일 제외
-.idea/
-.vscode/
-
-# 운영체제 임시 파일
-.DS_Store
-Thumbs.db
+*.user
+*.suo
+*.sln.docstates

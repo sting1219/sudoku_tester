@@ -1,45 +1,44 @@
-# Miscellaneous
-*.class
+# Firebase 관련 (가장 중요)
+# -----------------------
+# Firebase CLI가 사용하는 임시 설정 파일 (내 로컬 환경 정보가 들어있음)
+.firebase/
+# Firebase 실행 시 생성되는 로그
+firebase-debug.log
 *.log
-*.pyc
-*.swp
+
+# 빌드 결과물 (용량이 매우 큼)
+# -----------------------
+build/
+
+# 환경 설정 및 비밀 키 (보안 위험)
+# -----------------------
+.env
+*.p12
+*.jks
+*.keystore
+
+# 운영체제 관련 파일
+# -----------------------
 .DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+Thumbs.db
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
+# 툴 관련 (VS Code, Android Studio)
+# -----------------------
+.vscode/
 .idea/
+*.iml
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Firebase 임시 파일 제외
+.firebase/
+firebase-debug.log
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
+# 빌드 결과물 제외
+build/
 
-# Symbolication related
-app.*.symbols
+# IDE 설정 파일 제외
+.idea/
+.vscode/
 
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# 운영체제 임시 파일
+.DS_Store
+Thumbs.db
