@@ -164,6 +164,12 @@
       "languageVersion": "3.5"
     },
     {
+      "name": "web",
+      "rootUri": "file:///C:/Users/PCUSER/AppData/Local/Pub/Cache/hosted/pub.dev/web-1.1.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
       "name": "sudoku_game",
       "rootUri": "../",
       "packageUri": "lib/",
@@ -171,8 +177,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.10.3",
+  "generatorVersion": "3.10.7",
   "flutterRoot": "file:///C:/Users/PCUSER/Downloads/flutter",
-  "flutterVersion": "3.38.4",
+  "flutterVersion": "3.38.7",
   "pubCache": "file:///C:/Users/PCUSER/AppData/Local/Pub/Cache"
 }

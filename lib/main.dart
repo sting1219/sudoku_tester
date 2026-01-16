@@ -8,6 +8,8 @@ import 'widgets/sudoku_grid.dart';
 import 'widgets/number_keypad.dart';
 import 'widgets/game_status.dart';
 import 'widgets/action_buttons.dart';
+import 'widgets/ad_element.dart';
+
 
 void main() {
   runApp(const SudokuApp());
@@ -392,12 +394,13 @@ Widget build(BuildContext context) {
 
           // ⭐️ 복원 3: 숫자 키패드에도 비활성화 로직 적용
           Padding(
-            padding: const EdgeInsets.only(bottom: 30),
+            padding: const EdgeInsets.only(bottom: 10),
             child: NumberKeypad(
               board: _board, // ⭐️ 보드 객체 전달
               onNumberTap: isCellLocked ? null : (n) => _handleNumberInput(n),
             ),
           ),
+          const AdSenseWidget(),
         ],
       ),
     ),
