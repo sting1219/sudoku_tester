@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'models/sudoku_board.dart';
 import 'widgets/sudoku_grid.dart';
+import 'models/user_data.dart'; // Add this import
 
 import 'widgets/number_keypad.dart';
 import 'widgets/game_status.dart';
@@ -39,6 +40,7 @@ class SudokuScreen extends StatefulWidget {
 
 class _SudokuScreenState extends State<SudokuScreen> {
   SudokuBoard _board = SudokuBoard(difficulty: Difficulty.medium);
+  UserData _userData = UserData.initial(); // Add UserData member variable
   // 현재 선택된 셀 (선택하지 않았을 때는 null)
   int? _selectedRow;
   int? _selectedCol;
@@ -54,9 +56,72 @@ class _SudokuScreenState extends State<SudokuScreen> {
   @override
   void initState() {
     super.initState();
+    _loadUserData(); // Load user data at startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showDifficultySelector();
     });
+  }
+
+  // Add _loadUserData method
+  Future<void> _loadUserData() async {
+    final UserData loadedData = await LocalStorageService.loadUserData();
+    setState(() {
+      _userData = loadedData;
+    });
+  }
+
+  // Add _saveUserData method
+  Future<void> _saveUserData() async {
+    await LocalStorageService.saveUserData(_userData);
+  }
+
+  // 난이도별 기본 보상 (골드, 경험치)
+  static const Map<Difficulty, int> _baseGold = {
+    Difficulty.easy: 10,
+    Difficulty.medium: 30,
+    Difficulty.hard: 100,
+  };
+  static const Map<Difficulty, int> _baseXp = {
+    Difficulty.easy: 50,
+    Difficulty.medium: 150,
+    Difficulty.hard: 500,
+  };
+  // TODO: Expert 난이도 추가시 업데이트
+
+  // 난이도별 목표 시간 (초) - 보너스 배수용
+  static const Map<Difficulty, int> _targetTimes = {
+    Difficulty.easy: 180, // 3분
+    Difficulty.medium: 360, // 6분
+    Difficulty.hard: 600, // 10분
+  };
+  // TODO: Expert 난이도 추가시 업데이트
+
+  // 보상 계산 함수
+  (int, int) _calculateReward({
+    required Difficulty difficulty,
+    required int timeElapsed,
+    required int mistakes,
+  }) {
+    double gold = _baseGold[difficulty]!.toDouble();
+    double xp = _baseXp[difficulty]!.toDouble();
+
+    // 보너스 배수 1: 실수 0회
+    if (mistakes == 0) {
+      gold *= 1.2;
+      xp *= 1.2;
+      _userData.stats.noMissCount++; // 실수 0회 통계 업데이트
+    }
+
+    // 보너스 배수 2: 목표 시간 내 클리어
+    final targetTime = _targetTimes[difficulty];
+    if (targetTime != null && timeElapsed <= targetTime) {
+      gold *= 1.3;
+      xp *= 1.3;
+    }
+    
+    _userData.stats.totalCleared++; // 클리어 통계 업데이트
+
+    return (gold.toInt(), xp.toInt());
   }
 
 void _createNewGame([Difficulty? difficulty]) {
@@ -155,6 +220,9 @@ void _handleNumberInput(int number) {
 
 // 3. 🎉 성공 시퀀스: 이펙트 후 난이도 선택창 호출
 void _triggerSuccessSequence() async {
+  if (!mounted) return; // Pre-check before capturing context
+  final BuildContext currentContext = context; // Capture context
+
   setState(() {
     _isSuccessAnimation = true;
     _selectedRow = null; // 강조 효과를 위해 선택 해제
@@ -163,16 +231,54 @@ void _triggerSuccessSequence() async {
   // 1.5초 동안 초록색 반짝임 효과 대기
   await Future.delayed(const Duration(milliseconds: 1500));
   
-  if (!mounted) return;
+  if (!currentContext.mounted) return; // Re-check mounted status after async gap with captured context
+
+  // Calculate rewards
+  final int initialUserLevel = _userData.level;
+  final (int earnedGold, int earnedXp) = _calculateReward(
+    difficulty: _board.difficulty,
+    timeElapsed: _secondsElapsed,
+    mistakes: _board.mistakes,
+  );
+
+  // Update user data
+  _userData.addGold(earnedGold);
+  _userData.addXp(earnedXp);
+  await _saveUserData(); // Save updated data
+
+  final bool leveledUp = _userData.level > initialUserLevel;
+  final int bonusGoldFromLevelUp = leveledUp ? (_userData.level - initialUserLevel) * 50 : 0; // 50G per level up
+  if (leveledUp) {
+    _userData.addGold(bonusGoldFromLevelUp);
+    await _saveUserData(); // Save again if bonus gold is added
+  }
+
+  // Build the content for the dialog
+  String dialogContent = "기록: ${_formatTime(_secondsElapsed)}\n";
+  dialogContent += "획득 골드: $earnedGold G\n";
+  dialogContent += "획득 경험치: $earnedXp XP\n\n";
+  
+  if (leveledUp) {
+    dialogContent += "🎉 레벨업! (Lv.${_userData.level - initialUserLevel} UP!)\n";
+    dialogContent += "레벨업 보너스: $bonusGoldFromLevelUp G\n\n";
+  }
+
+  dialogContent += "현재 레벨: Lv.${_userData.level}\n";
+  dialogContent += "현재 XP: ${_userData.currentXp} / ${_userData.totalXpNeeded} XP\n";
+  dialogContent += "현재 골드: ${_userData.gold} G\n\n";
+  
+  dialogContent += "새로운 도전을 시작할까요?";
+
 
   // 성공 팝업 띄우기
+  // ignore: use_build_context_synchronously
   showDialog(
     context: context,
     barrierDismissible: false,
     builder: (context) => AlertDialog(
       title: const Text("🎉 퍼즐 해결!", textAlign: TextAlign.center),
       content: Text(
-        "기록: ${_formatTime(_secondsElapsed)}\n점수: ${_board.score}\n\n새로운 도전을 시작할까요?",
+        dialogContent, // Use the dynamically built content
         textAlign: TextAlign.center,
       ),
       actions: [
@@ -210,40 +316,6 @@ void _showGameOverDialog() {
     ),
   );
 }
-
-  void _showSolvedDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('🎉 퍼즐 해결!'),
-        content: Text('기록: ${_formatTime(_secondsElapsed)}\n점수: ${_board.score}'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('확인')),
-        ],
-      ),
-    );
-  }
-
-  void _showNewGameConfirmDialog() {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text("새 게임 시작"),
-      content: const Text("현재 진행 상황이 사라집니다. 새로운 퍼즐을 생성할까요?"),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("취소")),
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            _createNewGame();
-          },
-          child: const Text("시작"),
-        ),
-      ],
-    ),
-  );
-}
-
 bool _isCellLocked() {
   if (_selectedRow == null || _selectedCol == null) return true;
   int r = _selectedRow!;
@@ -301,18 +373,21 @@ Widget _buildPauseOverlay() {
   );
 }
 
-  @override
-Widget build(BuildContext context) {
-  // 1. 현재 선택된 셀의 상태를 미리 계산합니다.
-  bool isCellLocked = _isCellLocked(); // 이미 맞춘 정답이나 문제 칸인가?
-  bool isInitial = false;
-  if (_selectedRow != null && _selectedCol != null) {
-    isInitial = _board.initialGrid[_selectedRow!][_selectedCol!] != 0; // 시작부터 있던 문제 칸인가?
-  }
+    @override
 
-  return Scaffold(
-    backgroundColor: Colors.white,
-    appBar: AppBar(
+  Widget build(BuildContext context) {
+
+    // 1. 현재 선택된 셀의 상태를 미리 계산합니다.
+
+    bool isCellLocked = _isCellLocked(); // 이미 맞춘 정답이나 문제 칸인가?
+
+    
+
+    return Scaffold(
+
+      backgroundColor: Colors.white,
+
+      appBar: AppBar(
       title: const Text('Sudoku Master', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       backgroundColor: Colors.white,
       elevation: 0,

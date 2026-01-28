@@ -15,11 +15,7 @@ class NumberKeypad extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // ⭐️ 버튼 활성화 여부 확인
-    final bool isEnabled = onNumberTap != null;
-
-    return Column(
+  Widget build(BuildContext context) {    return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

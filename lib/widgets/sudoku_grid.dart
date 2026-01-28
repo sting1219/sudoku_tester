@@ -96,8 +96,6 @@ Widget _buildCellContent(SudokuBoard board, int row, int col, bool isInitial, bo
             final isInitial = board.initialGrid[row][col] != 0; // 힌트 숫자 여부
             final isSelected = row == selectedRow && col == selectedCol; // 선택 여부
             final isError = errorMap[row][col]; // 에러 발생 여부 확인
-            int value = board.currentGrid[row][col];
-            List<int> cellNotes = board.notes[row][col]; // 메모 데이터 가져오기
             // 현재 선택된 셀의 숫자 (0이 아닐 때만)
             int? selectedValue;
             if (selectedRow != null && selectedCol != null) {
