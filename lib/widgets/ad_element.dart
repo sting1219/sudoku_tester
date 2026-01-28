@@ -1,4 +1,3 @@
-import 'dart:js_interop';
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
@@ -19,18 +18,21 @@ class AdSenseWidget extends StatelessWidget {
         ..display = 'flex'
         ..justifyContent = 'center';
 
-      // 발급받으신 코드를 적용 (format을 horizontal로 고정하여 게임 화면 침범 방지)
-      div.innerHTML = '''
-        <ins class="adsbygoogle"
-             style="display:block; width:100%; height:100%;"
-             data-ad-client="ca-pub-3565697632228043"
-             data-ad-slot="6362829331"
-             data-ad-format="horizontal" 
-             data-full-width-responsive="true"></ins>
-        <script>
-             (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
-      '''.toJS;
+      final web.HTMLElement ins = web.document.createElement('ins') as web.HTMLElement;
+      ins.className = 'adsbygoogle';
+      ins.style.display = 'block';
+      ins.style.width = '100%';
+      ins.style.height = '100%';
+      ins.dataset['adClient'] = 'ca-pub-3565697632228043';
+      ins.dataset['adSlot'] = '6362829331';
+      ins.dataset['adFormat'] = 'horizontal';
+      ins.dataset['fullWidthResponsive'] = 'true';
+
+      final web.HTMLScriptElement script = web.document.createElement('script') as web.HTMLScriptElement;
+      script.text = '(adsbygoogle = window.adsbygoogle || []).push({});';
+
+      div.append(ins);
+      div.append(script);
 
       return div;
     });
