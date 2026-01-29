@@ -64632,13 +64632,25 @@ M(a){$.al0()
 $.Ac().AP("sudoku-bottom-ads",new A.NW(),!0)
 return A.aoD(new A.NX())}}
 A.NW.prototype={
-$1(a){var s=v.G.document.createElement("div"),r=s.style
-r.width="100%"
-r.height="100%"
-r.display="flex"
-r.justifyContent="center"
-s.innerHTML='        <ins class="adsbygoogle"\n             style="display:block; width:100%; height:100%;"\n             data-ad-client="ca-pub-3565697632228043"\n             data-ad-slot="6362829331"\n             data-ad-format="horizontal" \n             data-full-width-responsive="true"></ins>\n        <script>\n             (adsbygoogle = window.adsbygoogle || []).push({});\n        </script>\n      '
-return s},
+$1(a){var s,r,q=v.G,p=q.document.createElement("div"),o=p.style
+o.width="100%"
+o.height="100%"
+o.display="flex"
+o.justifyContent="center"
+s=q.document.createElement("ins")
+s.className="adsbygoogle"
+s.style.display="block"
+s.style.width="100%"
+s.style.height="100%"
+s.dataset.adClient="ca-pub-3565697632228043"
+s.dataset.adSlot="6362829331"
+s.dataset.adFormat="horizontal"
+s.dataset.fullWidthResponsive="true"
+r=q.document.createElement("script")
+r.text="(adsbygoogle = window.adsbygoogle || []).push({});"
+p.append(s)
+p.append(r)
+return p},
 $S:426}
 A.NX.prototype={
 $2(a,b){var s=null
