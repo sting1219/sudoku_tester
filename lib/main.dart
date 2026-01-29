@@ -237,9 +237,9 @@ void _togglePause() {
     int startRow = (row ~/ 3) * 3;
     int startCol = (col ~/ 3) * 3;
     bool boxComplete = true;
-    for (int r_loop = startRow; r_loop < startRow + 3; r_loop++) {
-      for (int c_loop = startCol; c_loop < startCol + 3; c_loop++) {
-        if (_board.currentGrid[r_loop][c_loop] == 0 && !(r_loop == row && c_loop == col)) {
+    for (int rLoop = startRow; rLoop < startRow + 3; rLoop++) {
+      for (int cLoop = startCol; cLoop < startCol + 3; cLoop++) {
+        if (_board.currentGrid[rLoop][cLoop] == 0 && !(rLoop == row && cLoop == col)) {
           boxComplete = false;
           break;
         }
@@ -250,8 +250,8 @@ void _togglePause() {
 
     // Check if completing row
     bool rowComplete = true;
-    for (int c_loop = 0; c_loop < 9; c_loop++) {
-      if (_board.currentGrid[row][c_loop] == 0 && c_loop != col) {
+    for (int cLoop = 0; cLoop < 9; cLoop++) {
+      if (_board.currentGrid[row][cLoop] == 0 && cLoop != col) {
         rowComplete = false;
         break;
       }
@@ -260,8 +260,8 @@ void _togglePause() {
 
     // Check if completing column
     bool colComplete = true;
-    for (int r_loop = 0; r_loop < 9; r_loop++) {
-      if (_board.currentGrid[r_loop][col] == 0 && r_loop != row) {
+    for (int rLoop = 0; rLoop < 9; rLoop++) {
+      if (_board.currentGrid[rLoop][col] == 0 && rLoop != row) {
         colComplete = false;
         break;
       }
@@ -360,7 +360,7 @@ void _handleNumberInput(int number) {
       } else {
         // 몬스터의 특수 능력 발동 (일단은 로그만)
         _addCombatLog("${_currentMonster.name}이(가) ${currentCol+1}열을 진흙으로 가렸습니다!"); // 임시 메시지
-        // TODO: _triggerMonsterSpecialAbility(); (예: 보드 가리기)
+        _triggerMonsterSpecialAbility(); // Monster special ability (e.g., board obfuscation)
       }
       
       // 실수 카운트는 _board.setNumber 내부에서 처리되므로 별도 처리 불필요
@@ -749,6 +749,7 @@ Widget _buildPauseOverlay() {
           ],
         ),
       ),
+    )
     );
 }
 }

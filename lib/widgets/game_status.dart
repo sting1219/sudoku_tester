@@ -42,7 +42,7 @@ class GameStatus extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildPlayerStatItem("Lv.", playerLevel.toString()),
-              _buildPlayerStatItem("Gold", "${playerGold}G"),
+              _buildPlayerStatItem("Gold", "$playerGold G"),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(left: 10),
@@ -56,7 +56,7 @@ class GameStatus extends StatelessWidget {
                         valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
                       ),
                       Text(
-                        "${playerCurrentXp}/${playerTotalXpNeeded}",
+                        "$playerCurrentXp/$playerTotalXpNeeded",
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                       ),
                     ],

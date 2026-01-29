@@ -54,7 +54,7 @@ class _CombatLogState extends State<CombatLog> {
           return Text(
             widget.logMessages[index],
             style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withAlpha((255 * 0.8).round()),
               fontSize: 12,
             ),
           );

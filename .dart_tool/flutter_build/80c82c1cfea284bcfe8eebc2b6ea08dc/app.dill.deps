@@ -287,10 +287,14 @@ file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/.dart_tool/flutter_build/80c8
 file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/.dart_tool/flutter_build/80c82c1cfea284bcfe8eebc2b6ea08dc/web_plugin_registrant.dart
 file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/.dart_tool/package_config.json
 file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/main.dart
+file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/models/combat_data.dart
 file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/models/sudoku_board.dart
+file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/models/user_data.dart
 file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/widgets/action_buttons.dart
 file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/widgets/ad_element.dart
+file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/widgets/combat_log.dart
 file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/widgets/game_status.dart
+file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/widgets/monster_status.dart
 file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/widgets/number_keypad.dart
 file:///C:/Users/PCUSER/Desktop/Sudoku/sudoku_game/lib/widgets/sudoku_grid.dart
 file:///C:/Users/PCUSER/Downloads/flutter/bin/cache/dart-sdk/lib/libraries.json

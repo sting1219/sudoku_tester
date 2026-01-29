@@ -27,8 +27,8 @@ class _MonsterStatusState extends State<MonsterStatus> with SingleTickerProvider
       duration: const Duration(milliseconds: 300),
     );
     _colorAnimation = ColorTween(
-      begin: Colors.red.withOpacity(0.0), // Start transparent
-      end: Colors.red.withOpacity(0.5),   // Briefly flash red
+      begin: Colors.red.withAlpha((255 * 0.0).round()), // Start transparent
+      end: Colors.red.withAlpha((255 * 0.5).round()),   // Briefly flash red
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut))
       ..addListener(() {
         setState(() {}); // Rebuild to apply color change
