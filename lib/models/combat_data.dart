@@ -1,12 +1,12 @@
 // lib/models/combat_data.dart
 
 class Monster {
-  String name;
-  int currentHp;
-  int maxHp;
-  int attackPower; // Damage monster deals to player on player error
-  int rewardGold;
-  int rewardXp;
+  final String name;
+  final int currentHp;
+  final int maxHp;
+  final int attackPower; // Damage monster deals to player on player error
+  final int rewardGold;
+  final int rewardXp;
   // TODO: Add special abilities (e.g., board obfuscation) later
 
   Monster({
@@ -18,31 +18,51 @@ class Monster {
     required this.rewardXp,
   }) : currentHp = currentHp ?? maxHp;
 
-  void takeDamage(int damage) {
-    currentHp -= damage;
-    if (currentHp < 0) currentHp = 0;
-  }
-
   bool isDefeated() => currentHp <= 0;
+
+  Monster copyWith({
+    String? name,
+    int? currentHp,
+    int? maxHp,
+    int? attackPower,
+    int? rewardGold,
+    int? rewardXp,
+  }) {
+    return Monster(
+      name: name ?? this.name,
+      maxHp: maxHp ?? this.maxHp,
+      currentHp: currentHp ?? this.currentHp,
+      attackPower: attackPower ?? this.attackPower,
+      rewardGold: rewardGold ?? this.rewardGold,
+      rewardXp: rewardXp ?? this.rewardXp,
+    );
+  }
 }
 
 class PlayerCombatStats {
-  int currentHp;
-  int maxHp;
-  int attackPower; // Base damage player deals
+  final int currentHp;
+  final int maxHp;
+  final int attackPower; // Base damage player deals
 
   PlayerCombatStats({
     this.maxHp = 100, // Default player HP
     int? currentHp,
-    this.attackPower = 1, // Default player attack power (multiplier for number entered)
+    this.attackPower = 100, // Default player attack power (multiplier for number entered)
   }) : currentHp = currentHp ?? maxHp;
 
-  void takeDamage(int damage) {
-    currentHp -= damage;
-    if (currentHp < 0) currentHp = 0;
-  }
-
   bool isDefeated() => currentHp <= 0;
+
+  PlayerCombatStats copyWith({
+    int? currentHp,
+    int? maxHp,
+    int? attackPower,
+  }) {
+    return PlayerCombatStats(
+      maxHp: maxHp ?? this.maxHp,
+      currentHp: currentHp ?? this.currentHp,
+      attackPower: attackPower ?? this.attackPower,
+    );
+  }
 }
 
 // Predefined Monsters

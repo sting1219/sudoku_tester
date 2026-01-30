@@ -1,5 +1,6 @@
 import 'dart:math';
 
+// This class is no longer used by SudokuBoard's internal undo system.
 class SudokuEntry {
   final int row;
   final int col;
@@ -30,30 +31,38 @@ class SudokuBoard {
   int mistakes = 0;
   final int maxMistakes = 3;
   int score = 0;
-  List<SudokuEntry> undoStack = [];
+  // undoStack is removed, will be handled by GameState history.
   Difficulty difficulty;
 
-  // ⭐️ 단일 생성자로 통합
   SudokuBoard({this.difficulty = Difficulty.medium}) {
-    // 1. 완성된 판 생성
     solution = _generateSolvedBoard();
-    // 2. 난이도에 맞춰 구멍 뚫기
     initialGrid = _createPuzzle(solution, difficulty);
-    // 3. 현재 판 복사
     currentGrid = initialGrid.map((row) => List<int>.from(row)).toList();
-
     scoreAwarded = List.generate(9, (_) => List.filled(9, false));
     for (int r = 0; r < 9; r++) {
       for (int c = 0; c < 9; c++) {
         if (initialGrid[r][c] != 0) {
-          scoreAwarded[r][c] = true; // 이미 채워진 문제는 점수 대상 제외
+          scoreAwarded[r][c] = true;
         }
       }
     }
   }
-  
 
-  // --- 보드 생성 알고리즘 ---
+  // Method to create a deep copy of the board state.
+  SudokuBoard clone() {
+    final newBoard = SudokuBoard(difficulty: difficulty);
+    newBoard.initialGrid = initialGrid.map((row) => List<int>.from(row)).toList();
+    newBoard.solution = solution.map((row) => List<int>.from(row)).toList();
+    newBoard.currentGrid = currentGrid.map((row) => List<int>.from(row)).toList();
+    newBoard.errorMap = errorMap.map((row) => List<bool>.from(row)).toList();
+    newBoard.notes = notes.map((row) => row.map((cell) => List<int>.from(cell)).toList()).toList();
+    newBoard.scoreAwarded = scoreAwarded.map((row) => List<bool>.from(row)).toList();
+    newBoard.mistakes = mistakes;
+    newBoard.score = score;
+    return newBoard;
+  }
+
+  // --- Board Generation Algorithms ---
 
   static List<List<int>> _generateSolvedBoard() {
     List<List<int>> board = List.generate(9, (_) => List.filled(9, 0));
@@ -109,15 +118,12 @@ class SudokuBoard {
     return true;
   }
 
-  // --- 게임 로직 ---
+  // --- Game Logic ---
 
   void setNumber(int row, int col, int number, {bool isMemoMode = false}) {
     if (initialGrid[row][col] != 0) return;
 
-    undoStack.add(SudokuEntry(
-      row, col, currentGrid[row][col], List<int>.from(notes[row][col]),
-    ));
-
+    // The undoStack logic is removed from here.
     if (isMemoMode && number != 0) {
       if (notes[row][col].contains(number)) {
         notes[row][col].remove(number);
@@ -126,7 +132,7 @@ class SudokuBoard {
         notes[row][col].sort();
       }
       currentGrid[row][col] = 0;
-      errorMap[row][col] = false; // 메모 모드 시 에러 표시 제거
+      errorMap[row][col] = false;
     } else {
       currentGrid[row][col] = number;
       notes[row][col].clear();
@@ -139,7 +145,7 @@ class SudokuBoard {
           errorMap[row][col] = false;
           if (!scoreAwarded[row][col]) {
             score += 10;
-            scoreAwarded[row][col] = true; // 점수 지급 완료 기록
+            scoreAwarded[row][col] = true;
           }
         }
       } else {
@@ -148,52 +154,37 @@ class SudokuBoard {
     }
   }
 
-// ⭐️ 4. 힌트 사용 시에도 점수를 주지 않도록 설정 (선택 사항)
   void giveHint(int row, int col) {
     if (initialGrid[row][col] == 0) {
       currentGrid[row][col] = solution[row][col];
       notes[row][col].clear();
       errorMap[row][col] = false;
-      scoreAwarded[row][col] = true; // 힌트로 맞춘 칸은 점수 지급 대상으로 잠금
+      scoreAwarded[row][col] = true;
     }
   }
-  void undo() {
-    if (undoStack.isEmpty) return;
-    final lastAction = undoStack.removeLast();
-    currentGrid[lastAction.row][lastAction.col] = lastAction.previousValue;
-    notes[lastAction.row][lastAction.col] = lastAction.previousNotes;
-    
-    // 이전 값이 정답인지 다시 체크하여 errorMap 갱신
-    int val = currentGrid[lastAction.row][lastAction.col];
-    if (val != 0 && val != solution[lastAction.row][lastAction.col]) {
-      errorMap[lastAction.row][lastAction.col] = true;
-    } else {
-      errorMap[lastAction.row][lastAction.col] = false;
-    }
-  }
+
+  // The undo() method is removed.
 
   bool isSolved() {
-  for (int r = 0; r < 9; r++) {
-    for (int c = 0; c < 9; c++) {
-      // 빈칸이 하나라도 있거나, 에러(중복)가 하나라도 있으면 false
-      if (currentGrid[r][c] == 0 || errorMap[r][c]) {
-        return false;
+    for (int r = 0; r < 9; r++) {
+      for (int c = 0; c < 9; c++) {
+        if (currentGrid[r][c] == 0 || errorMap[r][c]) {
+          return false;
+        }
       }
     }
+    return true;
   }
-  return true;
-}
 
   int getCountOfNumber(int number) {
-  int count = 0;
-  for (int r = 0; r < 9; r++) {
-    for (int c = 0; c < 9; c++) {
-      // 숫자가 같고, 에러가 없는(정답인) 상태만 카운트
-      if (currentGrid[r][c] == number && !errorMap[r][c]) {
-        count++;
+    int count = 0;
+    for (int r = 0; r < 9; r++) {
+      for (int c = 0; c < 9; c++) {
+        if (currentGrid[r][c] == number && !errorMap[r][c]) {
+          count++;
+        }
       }
     }
+    return count;
   }
-  return count;
-}
 }

@@ -40,8 +40,7 @@ class NumberKeypad extends StatelessWidget {
     final bool isCompleted = count >= 9;
     
     // 이미 9개 채워졌거나, 외부에서 비활성화(null)가 들어왔다면 작동 안함
-    //final bool isActuallyEnabled = onNumberTap != null && !isCompleted;
-    final bool isActuallyEnabled = onNumberTap != null;
+    final bool isActuallyEnabled = onNumberTap != null && !isCompleted;
 
    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5),

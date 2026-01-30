@@ -58,8 +58,8 @@ class _MonsterStatusState extends State<MonsterStatus> with SingleTickerProvider
 
     return Container(
       padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[800],
+      decoration: BoxDecoration( // Added back decoration for white background
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -67,7 +67,7 @@ class _MonsterStatusState extends State<MonsterStatus> with SingleTickerProvider
           Text(
             widget.monster.name,
             style: const TextStyle(
-              color: Colors.white,
+              color: Colors.black, // Changed to black
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -77,46 +77,57 @@ class _MonsterStatusState extends State<MonsterStatus> with SingleTickerProvider
           Container(
             width: 80,
             height: 80,
-            color: Colors.green[700], // Base color
+            color: Colors.blueGrey[100], // Changed to a lighter color
             foregroundDecoration: BoxDecoration(
               color: _colorAnimation.value, // Apply animation color overlay
             ),
             child: const Center(
-              child: Icon(Icons.psychology_alt, color: Colors.white, size: 50), // Placeholder icon
+              child: Icon(Icons.psychology_alt, color: Colors.black, size: 50), // Changed to black
             ),
           ),
           const SizedBox(height: 5),
           // HP Bar
-          Stack(
-            children: [
-              Container(
-                width: 100,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: Colors.red[900],
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-              FractionallySizedBox(
-                widthFactor: hpPercentage,
-                child: Container(
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: Colors.green[400],
-                    borderRadius: BorderRadius.circular(5),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final double barWidth = constraints.maxWidth;
+              return Stack(
+                alignment: Alignment.center, // Center the text within the stack
+                children: [
+                  // Background (empty part of the bar)
+                  Container(
+                    width: barWidth,
+                    height: 12, // Slightly thicker
+                    decoration: BoxDecoration(
+                      color: Colors.red[900],
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  // Foreground (filled part of the bar)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: barWidth * hpPercentage,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.green[400],
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ),
+                  // HP Text
+                  Text(
+                    '${widget.monster.currentHp}/${widget.monster.maxHp}',
+                    style: const TextStyle(
+                      color: Colors.black, // Changed to black
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 2),
-          Text(
-            'HP: ${widget.monster.currentHp}/${widget.monster.maxHp}',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
-            ),
-          ),
         ],
       ),
     );

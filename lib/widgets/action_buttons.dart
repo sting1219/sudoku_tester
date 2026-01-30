@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ActionButtons extends StatelessWidget {
-  final VoidCallback onUndo;
+  final VoidCallback? onUndo;
   final VoidCallback? onDelete;     // ✅ null 허용
   final VoidCallback? onMemoToggle; // ✅ null 허용
   final VoidCallback? onHint;       // ✅ null 허용
@@ -10,7 +10,7 @@ class ActionButtons extends StatelessWidget {
 
   const ActionButtons({
     super.key,
-    required this.onUndo,
+    this.onUndo,
     this.onDelete,     // ✅ required 제거
     this.onMemoToggle, // ✅ required 제거
     required this.isMemoOn,

@@ -4,7 +4,6 @@ class GameStatus extends StatelessWidget {
   final String difficulty;
   final int mistakes;
   final int maxMistakes;
-  // Removed score, as it's replaced by gold/xp in new design
   final String time;
   final VoidCallback onPauseTap;
 
@@ -13,6 +12,8 @@ class GameStatus extends StatelessWidget {
   final int playerCurrentXp;
   final int playerTotalXpNeeded;
   final int playerGold;
+  final int playerCurrentHp; // Add this
+  final int playerMaxHp;     // Add this
 
 
   const GameStatus({
@@ -20,13 +21,14 @@ class GameStatus extends StatelessWidget {
     required this.difficulty,
     required this.mistakes,
     required this.maxMistakes,
-    // this.score, // Removed
     required this.time,
     required this.onPauseTap,
     required this.playerLevel,
     required this.playerCurrentXp,
     required this.playerTotalXpNeeded,
     required this.playerGold,
+    required this.playerCurrentHp, // Add this
+    required this.playerMaxHp,     // Add this
   });
 
   @override
@@ -39,30 +41,13 @@ class GameStatus extends StatelessWidget {
         children: [
           // Player Stats Row
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+            children: [ // mainAxisAlignment removed for Expanded widgets to work
               _buildPlayerStatItem("Lv.", playerLevel.toString()),
               _buildPlayerStatItem("Gold", "$playerGold G"),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("XP", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                      LinearProgressIndicator(
-                        value: xpPercentage,
-                        backgroundColor: Colors.grey[300],
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
-                      ),
-                      Text(
-                        "$playerCurrentXp/$playerTotalXpNeeded",
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              const SizedBox(width: 10), // Separator
+              _buildPlayerHpItem(playerCurrentHp, playerMaxHp), // New Player HP item
+              const SizedBox(width: 10), // Separator
+              _buildPlayerXpItem(xpPercentage, playerCurrentXp, playerTotalXpNeeded), // Existing XP bar as a helper
             ],
           ),
           const SizedBox(height: 10), // Separator
@@ -72,7 +57,6 @@ class GameStatus extends StatelessWidget {
             children: [
               _buildInfoItem("난이도", difficulty),
               _buildInfoItem("실수", "$mistakes/$maxMistakes"),
-              // Removed score, now show time and pause
               Row(
                 children: [
                   _buildInfoItem("시간", time),
@@ -108,6 +92,51 @@ class GameStatus extends StatelessWidget {
         children: [
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        ],
+      ),
+    );
+  }
+
+  // New helper for Player HP
+  Widget _buildPlayerHpItem(int currentHp, int maxHp) {
+    double hpPercentage = (maxHp == 0) ? 0 : currentHp / maxHp;
+    if (hpPercentage < 0) hpPercentage = 0;
+
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("HP", style: TextStyle(color: Colors.grey, fontSize: 12)),
+          LinearProgressIndicator(
+            value: hpPercentage,
+            backgroundColor: Colors.grey[300],
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.red),
+          ),
+          Text(
+            "$currentHp/$maxHp",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // New helper for Player XP
+  Widget _buildPlayerXpItem(double xpPercentage, int currentXp, int totalXpNeeded) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("XP", style: TextStyle(color: Colors.grey, fontSize: 12)),
+          LinearProgressIndicator(
+            value: xpPercentage,
+            backgroundColor: Colors.grey[300],
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+          ),
+          Text(
+            "$currentXp/$totalXpNeeded",
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
         ],
       ),
     );
