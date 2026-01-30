@@ -19,6 +19,7 @@ Thumbs.db
 # 개발 도구 설정 (VS Code, Android Studio 등)
 .vscode/
 .idea/
+.dart_tool/
 *.iml
 
 # 웹 전용 배포 시 불필요한 플랫폼 폴더 (GitHub을 깔끔하게 유지)
