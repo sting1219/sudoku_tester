@@ -6,17 +6,21 @@ class SudokuGrid extends StatelessWidget {
   final Function(int row, int col) onCellTap; // 셀이 탭되었을 때 호출될 콜백
   final int? selectedRow; // 현재 선택된 셀의 행
   final int? selectedCol; // 현재 선택된 셀의 열
-  final List<List<bool>> errorMap; 
+   final List<List<bool>> errorMap; 
   final bool isSuccess;
+  final int? flashingRow; // 플래시 효과를 줄 행
+  final int? flashingCol; // 플래시 효과를 줄 열
 
   const SudokuGrid({
     super.key,
     required this.board,
     required this.onCellTap,
     this.selectedRow,
-    this.selectedCol,
+     this.selectedCol,
     required this.errorMap, 
     this.isSuccess = false,
+    this.flashingRow,
+    this.flashingCol,
   });
 
 // lib/widgets/sudoku_grid.dart 클래스 내부
@@ -29,10 +33,17 @@ Widget _buildCellContent(SudokuBoard board, int row, int col, bool isInitial, bo
       return Text(
         value.toString(),
         style: TextStyle(
-          fontSize: 24, // ⭐️ 가독성을 위해 크기 살짝 키움
-          fontWeight: isInitial ? FontWeight.w900 : FontWeight.bold,
-          // 에러면 흰색(배경이 빨강이므로), 아니면 (초기값이면 검정, 사용자가 입력한 거면 파랑)
-          color: isError ? Colors.white : (isInitial ? Colors.black : Colors.blue[700]),
+          fontSize: 34, // 20% 더 크게
+          fontWeight: FontWeight.bold, // 폰트 두께 강조
+          // 고정 숫자는 흰색 + 미세한 그림자, 유저 입력은 더 밝은 톤의 Cyan으로 가독성 확보
+          color: isError ? Colors.redAccent : (isInitial ? Colors.white : const Color(0xFF00E5FF)),
+          shadows: isInitial ? [
+            Shadow(
+              blurRadius: 2.0,
+              color: Colors.black.withOpacity(0.5),
+              offset: const Offset(0.5, 0.5),
+            ),
+          ] : null,
         ),
       );
     }
@@ -58,7 +69,7 @@ Widget _buildCellContent(SudokuBoard board, int row, int col, bool isInitial, bo
                 style: TextStyle(
                   fontSize: 11, // ⭐️ 요청하신 대로 크기 키움 (기존 8 -> 11)
                   fontWeight: FontWeight.bold, // ⭐️ 볼드 처리로 더 뚜렷하게
-                  color: Colors.blueGrey[600],
+                  color: Colors.blueGrey[400],
                   height: 1.0,
                 ),
               ),
@@ -79,7 +90,7 @@ Widget _buildCellContent(SudokuBoard board, int row, int col, bool isInitial, bo
       child: Container(
         padding: const EdgeInsets.all(4.0),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.black, width: 3.0), // 전체 테두리
+          border: Border.all(color: Colors.white54, width: 2.0), // 전체 테두리 상향
         ),
         child: GridView.builder(
           physics: const NeverScrollableScrollPhysics(), // 스크롤 방지
@@ -113,42 +124,72 @@ Widget _buildCellContent(SudokuBoard board, int row, int col, bool isInitial, bo
                 isRelated = true;
               }
             }
-            // 3. 같은 숫자를 가진 셀 체크 (0 제외)
+             // 3. 같은 숫자를 가진 셀 체크 (0 제외)
             bool isSameValue = false;
             if (selectedValue != null && selectedValue != 0 && 
                 board.currentGrid[row][col] == selectedValue) {
               isSameValue = true;
             }
-            // 4. 색상 우선순위 결정
-            Color cellColor = Colors.white; // 기본색
-            if (isError) {
-              cellColor = Colors.red[200]!; // 에러가 최우선
+
+            // 3.5 정답 플래시 영역 체크
+            bool isFlashing = false;
+            if (flashingRow != null && flashingCol != null) {
+              int fStartRow = (flashingRow! ~/ 3) * 3;
+              int fStartCol = (flashingCol! ~/ 3) * 3;
+              if (row == flashingRow || col == flashingCol ||
+                  (row >= fStartRow && row < fStartRow + 3 && col >= fStartCol && col < fStartCol + 3)) {
+                isFlashing = true;
+              }
+            }
+            // 4. 색상 우선순위 결정 (AlphaBlend로 '중첩' 효과 구현)
+            const Color baseColor = Color(0xFF1E293B); 
+            Color cellColor = baseColor;
+
+             if (isError) {
+              cellColor = Color.alphaBlend(Colors.red.withOpacity(0.4), baseColor);
+            } else if (isFlashing) {
+              // 정답 플래시 효과: 황금색/밝은 파란색
+              cellColor = Color.alphaBlend(Colors.amber.withOpacity(0.6), baseColor);
             } else if (isSelected) {
-              cellColor = Colors.blue[300]!; // 선택된 셀 (진한 파랑)
+              cellColor = const Color(0xFF4A90E2); // 선택 셀은 불투명하게 완전 강조
             } else if (isSameValue) {
-              cellColor = Colors.blue[100]!; // 같은 숫자 셀 (중간 파랑)
+              // sameNumberBg: rgba(74, 144, 226, 0.3)를 base 위에 중첩
+              cellColor = Color.alphaBlend(const Color(0xFF4A90E2).withOpacity(0.3), baseColor);
             } else if (isRelated) {
-              cellColor = const Color(0xFFE8F0FE); // 관련 라인 (매우 연한 파랑)
+              // relatedBg: rgba(255, 255, 255, 0.08)를 base 위에 중첩 (은은한 밝기)
+              cellColor = Color.alphaBlend(Colors.white.withOpacity(0.08), baseColor); 
             }
 
             // 🎇 성공 시 색상 변경 (초록색 반짝임)
-      if (isSuccess) {
-        cellColor = Colors.green[300]!;
-      }
+            if (isSuccess) {
+              cellColor = Colors.green[400]!;
+            }
 
-            return GestureDetector(
+             return GestureDetector(
               onTap: isSuccess ? null : () => onCellTap(row, col), // 성공 시 터치 막기
               child: AnimatedContainer( // Container를 AnimatedContainer로 변경
-                duration: Duration(milliseconds: isSuccess ? 600 : 0),
+                duration: Duration(milliseconds: (isSuccess || isFlashing) ? 300 : 0),
                 curve: Curves.easeInOut,
                 decoration: BoxDecoration(
                 color: cellColor,
                   border: Border(
-                    // 얇은 그리드 라인
-                    top: BorderSide(width: row % 3 == 0 ? 2 : 0.5, color: Colors.black),
-                    left: BorderSide(width: col % 3 == 0 ? 2 : 0.5, color: Colors.black),
-                    right: BorderSide(width: col == 8 ? 2 : 0, color: Colors.black),
-                    bottom: BorderSide(width: row == 8 ? 2 : 0, color: Colors.black),
+                    // 격자 선 선명화 및 교차점 마감 정밀화
+                    top: BorderSide(
+                      width: row % 3 == 0 ? 3.0 : 0.5, 
+                      color: row % 3 == 0 ? const Color(0xFFAAAAAA) : const Color(0xFF555555)
+                    ),
+                    left: BorderSide(
+                      width: col % 3 == 0 ? 3.0 : 0.5, 
+                      color: col % 3 == 0 ? const Color(0xFFAAAAAA) : const Color(0xFF555555)
+                    ),
+                    right: BorderSide(
+                      width: col == 8 ? 3.0 : 0, 
+                      color: col == 8 ? const Color(0xFFAAAAAA) : const Color(0xFF555555)
+                    ),
+                    bottom: BorderSide(
+                      width: row == 8 ? 3.0 : 0, 
+                      color: row == 8 ? const Color(0xFFAAAAAA) : const Color(0xFF555555)
+                    ),
                   ),
                 ),
                 child: Center(

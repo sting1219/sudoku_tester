@@ -42,38 +42,72 @@ class GameStatus extends StatelessWidget {
     double xpPercentage = (playerTotalXpNeeded == 0) ? 0 : playerCurrentXp / playerTotalXpNeeded;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-      child: Column( // Use Column to stack player stats and game stats
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+      child: Column(
         children: [
-          // Player Stats Row
           Row(
-            children: [ // mainAxisAlignment removed for Expanded widgets to work
-              _buildPlayerStatItem("Lv.", playerLevel.toString()),
-              _buildPlayerStatItem("Gold", "$playerGold G"),
-              const SizedBox(width: 10), // Separator
-              _buildPlayerHpItem(playerCurrentHp, playerMaxHp), // New Player HP item
-              const SizedBox(width: 10), // Separator
-              _buildPlayerXpItem(xpPercentage, playerCurrentXp, playerTotalXpNeeded), // Existing XP bar as a helper
+            children: [
+              Text("Lv.$playerLevel", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(width: 8),
+              Text("$playerGold G", style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(width: 10),
+              Expanded(child: _buildCompactBar("HP", playerCurrentHp, playerMaxHp, Colors.red)),
+              const SizedBox(width: 10),
+              Expanded(child: _buildCompactBar("XP", playerCurrentXp, playerTotalXpNeeded, Colors.green)),
             ],
           ),
-          const SizedBox(height: 10), // Separator
-          // Game Stats Row
+          const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildInfoItem("난이도", difficulty),
-              _buildInfoItem("실수", "$mistakes/$maxMistakes"),
-              _buildInfoItem("시간", time),
-              _buildInfoItem("힌트", "$hintsRemaining"), // 힌트 횟수
-              _buildInfoItem("실행취소", "$undoCount/$maxUndoCount"), // 실행 취소 횟수
-              IconButton(
-                icon: const Icon(Icons.pause_circle_filled, color: Colors.blue),
-                onPressed: onPauseTap,
+              _buildSmallInfo("난이도", difficulty),
+              _buildSmallInfo("실수", "$mistakes/$maxMistakes"),
+              _buildSmallInfo("시간", time),
+              _buildSmallInfo("힌트", "$hintsRemaining"),
+              _buildSmallInfo("실행취소", "$undoCount/$maxUndoCount"),
+              GestureDetector(
+                onTap: onPauseTap,
+                child: const Icon(Icons.pause_circle_filled, color: Colors.blue, size: 24),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCompactBar(String label, int current, int total, Color color) {
+    double percentage = (total == 0) ? 0 : current / total;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            Text("$current/$total", style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 2),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: percentage.clamp(0.0, 1.0),
+            minHeight: 4,
+            backgroundColor: Colors.white10,
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSmallInfo(String label, String value) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 9)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+      ],
     );
   }
 

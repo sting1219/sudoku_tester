@@ -21,7 +21,7 @@ class NumberKeypad extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(5, (index) => _buildNumberButton(index + 1)),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 5),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -43,17 +43,18 @@ class NumberKeypad extends StatelessWidget {
     final bool isActuallyEnabled = onNumberTap != null && !isCompleted;
 
    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: InkWell(
         onTap: isActuallyEnabled ? () => onNumberTap!(number) : null,
         child: Opacity(
           opacity: isActuallyEnabled ? 1.0 : 0.3, // 완료된 숫자는 더 흐리게 표시
           child: Container(
-            width: 50,
-            height: 50,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: isCompleted ? Colors.grey[200] : Colors.blue[50],
+              color: isCompleted ? const Color(0xFF1E293B) : const Color(0xFF334155),
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: isActuallyEnabled ? Colors.indigoAccent.withOpacity(0.5) : Colors.transparent),
             ),
             child: Center(
               child: Column(
@@ -61,10 +62,10 @@ class NumberKeypad extends StatelessWidget {
                 children: [
                   Text(
                     number.toString(),
-                    style: TextStyle(
-                      fontSize: 22,
+                     style: TextStyle(
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: isActuallyEnabled ? Colors.blue[900] : Colors.grey,
+                      color: isActuallyEnabled ? Colors.white : Colors.white38,
                     ),
                   ),
                   // 선택사항: 숫자 아래에 작게 남은 개수를 표시해줄 수도 있습니다.
@@ -85,20 +86,20 @@ class NumberKeypad extends StatelessWidget {
     final bool isEnabled = onDeleteTap != null; // ⭐️ 활성화 체크
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: InkWell(
         onTap: onDeleteTap,
         child: Opacity(
           opacity: isEnabled ? 1.0 : 0.3,
           child: Container(
-            width: 50,
-            height: 50,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: Colors.red[50],
+              color: const Color(0xFF451A1A),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(Icons.backspace_outlined, 
-              color: isEnabled ? Colors.red[900] : Colors.grey),
+              color: isEnabled ? Colors.redAccent : Colors.white24),
           ),
         ),
       ),

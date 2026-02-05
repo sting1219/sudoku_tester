@@ -11,13 +11,14 @@ class SudokuEntry {
 }
 
 enum Difficulty {
-  easy(emptyCells: 30, label: "쉬움"),
-  medium(emptyCells: 45, label: "보통"),
-  hard(emptyCells: 55, label: "어려움");
+  easy(emptyCells: 30, label: "안전", rpgGrade: "Safe"),
+  medium(emptyCells: 45, label: "위험", rpgGrade: "Danger"),
+  hard(emptyCells: 55, label: "치명적", rpgGrade: "Fatal");
 
   final int emptyCells;
   final String label;
-  const Difficulty({required this.emptyCells, required this.label});
+  final String rpgGrade;
+  const Difficulty({required this.emptyCells, required this.label, required this.rpgGrade});
 }
 
 class SudokuBoard {

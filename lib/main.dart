@@ -14,7 +14,8 @@ import 'widgets/action_buttons.dart';
 import 'widgets/ad_element.dart';
 import 'widgets/monster_status.dart';
 import 'widgets/combat_log.dart';
-import 'widgets/sudoku_grid.dart';
+import 'widgets/projectile_animation.dart';
+import 'widgets/floating_damage.dart';
 
 // GameState class to hold a snapshot of the entire game state for the undo feature.
 class GameState {
@@ -49,17 +50,368 @@ class SudokuApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sudoku Game',
+      title: 'Sudoku RPG',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        brightness: Brightness.dark,
+        primarySwatch: Colors.indigo,
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
       ),
-      home: const SudokuScreen(),
+      home: const MainLayout(),
+    );
+  }
+}
+
+class MainLayout extends StatefulWidget {
+  const MainLayout({super.key});
+
+  @override
+  State<MainLayout> createState() => _MainLayoutState();
+}
+
+class _MainLayoutState extends State<MainLayout> {
+  int _currentIndex = 0;
+  bool _isGameStarted = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          HomeView(
+            isStarted: _isGameStarted,
+            onStart: () => setState(() => _isGameStarted = true),
+          ),
+          const SudokuGuideView(),
+          const RPGWikiView(),
+          const DevLogView(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Guide'),
+          NavigationDestination(icon: Icon(Icons.auto_stories), label: 'Wiki'),
+          NavigationDestination(icon: Icon(Icons.code), label: 'Dev Log'),
+        ],
+      ),
+    );
+  }
+}
+
+class HomeView extends StatelessWidget {
+  final bool isStarted;
+  final VoidCallback onStart;
+
+  const HomeView({
+    super.key,
+    required this.isStarted,
+    required this.onStart,
+  });
+
+  final String _longDescription = "이 게임은 논리적인 스도쿠와 RPG가 결합된 독창적인 하이브리드 퍼즐 게임입니다. "
+      "플레이어는 숫자의 전사가 되어 그리드에 올바른 숫자를 채워 넣음으로써 강력한 몬스터들에게 치명적인 타격을 입힐 수 있습니다. "
+      "단순한 퍼즐 풀이를 넘어, 실시간으로 변화하는 전투 상황에 맞춰 전략을 세우고, 콤보 시스템을 활용해 공격력을 극대화하는 재미를 선사합니다. "
+      "던전을 탐험하며 만나는 다양한 몬스터들은 저마다의 특수한 패턴과 방어력을 가지고 있어, 정확도뿐만 아니라 속도 또한 승리의 핵심 요소가 됩니다. "
+      "수집한 골드와 경험치로 캐릭터를 성장시키고, 전설적인 스도쿠 마스터의 길을 걸으며 세상을 수호하세요. "
+      "고전적인 퍼즐의 지적 유희와 현대적인 RPG의 성장의 즐거움이 완벽하게 어우러진 이 세계에서 당신의 논리력을 시험해보세요. "
+      "지금 바로 숫자의 전설적인 여정을 시작하세요!";
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // 상단 섹션 슬림화
+        Container(
+          height: 80,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "Sudoku RPG: The Number Warrior",
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  "숫자로 싸우는 퍼즐 기반의 장대한 여정",
+                  style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // 게임 영역 + 오버레이
+        Expanded(
+          child: Stack(
+            children: [
+              SudokuScreen(isGameStarted: isStarted),
+              if (!isStarted)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withOpacity(0.8),
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Center(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: onStart,
+                              icon: const Icon(Icons.play_arrow, size: 32),
+                              label: const Text("게임 시작하기", style: TextStyle(fontSize: 20)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.indigoAccent,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 20),
+                                elevation: 10,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                              ),
+                            ),
+                            const SizedBox(height: 30),
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.white12),
+                              ),
+                              child: Text(
+                                _longDescription,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.white,
+                                  height: 1.5,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class SudokuGuideView extends StatelessWidget {
+  const SudokuGuideView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Sudoku Guide")),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text("스도쿠 정복을 위한 전략 지침서", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          const Text(
+            "스도쿠는 9x9 격자판에서 가로, 세로, 그리고 3x3 박스 안에 1부터 9까지의 숫자를 겹치지 않게 채워넣는 퍼즐입니다.",
+            style: TextStyle(fontSize: 16),
+          ),
+          const Divider(height: 40),
+          _buildGuideSection(
+            "1. 기초: 단일 후보수 (Naked Single)",
+            "특정 셀에 들어갈 수 있는 숫자가 단 하나뿐일 때, 해당 숫자를 채워 넣는 가장 기본적인 방법입니다.",
+          ),
+          _buildGuideSection(
+            "2. 중급: 숨겨진 후보수 (Hidden Single)",
+            "행, 열 또는 박스 전체를 보았을 때 특정 숫자가 들어갈 수 있는 칸이 단 하나뿐이라면, 그 칸의 후보수가 여러 개라도 해당 숫자를 확정할 수 있습니다.",
+          ),
+          _buildGuideSection(
+            "3. 고급: Naked Pair",
+            "동일한 구역(행, 열, 박스) 내에 동일한 두 개의 후보수만을 가진 두 개의 셀이 있다면, 해당 구역 내의 다른 모든 셀에서 그 두 숫자를 제거할 수 있습니다.",
+          ),
+          const SizedBox(height: 40),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Icon(Icons.lightbulb, color: Colors.amber, size: 48),
+                  const SizedBox(height: 8),
+                  const Text("전투 팁", style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text("빠르게 정답을 입력하면 콤보 보너스가 발생하여 몬스터에게 더 큰 데미지를 입힙니다!"),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuideSection(String title, String content) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigoAccent)),
+          const SizedBox(height: 8),
+          Text(content, style: const TextStyle(fontSize: 15, color: Colors.white70)),
+        ],
+      ),
+    );
+  }
+}
+
+class RPGWikiView extends StatelessWidget {
+  const RPGWikiView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("RPG Wiki")),
+      body: GridView.count(
+        crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 1,
+        padding: const EdgeInsets.all(16),
+        childAspectRatio: 0.8,
+        children: [
+          _buildMonsterCard("숫자 슬라임", "HP: 2000 | ATK: 10", "초보 용사를 위한 연습용 몬스터입니다. 가끔 숫자 1을 떨어트립니다.", Colors.green),
+          _buildMonsterCard("숫자 골렘", "HP: 5000 | ATK: 25", "단단한 몸체를 가진 골렘입니다. 3x3 박스 완성 시 큰 데미지를 입힐 수 있습니다.", Colors.blueGrey),
+          _buildMonsterCard("스도쿠 드래곤", "HP: 10000 | ATK: 50", "퍼즐의 제왕입니다. 드래곤의 브레스는 여러분의 스도쿠 판 일부를 가려버릴 수도 있습니다.", Colors.redAccent),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonsterCard(String name, String stats, String desc, Color color) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(color: color.withOpacity(0.2), shape: BoxShape.circle),
+              child: Icon(Icons.adb, color: color, size: 40),
+            ),
+            const SizedBox(height: 16),
+            Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(stats, style: TextStyle(color: color, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 12),
+            Text(desc, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: Colors.blueGrey)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DevLogView extends StatelessWidget {
+  const DevLogView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Development Log")),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          _buildLogEntry(
+            "2026-02-05",
+            "생동감 넘치는 전장: 몬스터 타격 리액션 고도화",
+            "투사체가 몬스터에 닿는 순간의 '충격량'을 시각적으로 전달하기 위해 4단계 리액션 시스템을 구축했습니다. "
+            "타격 시점에 맞춘 몬스터의 좌우 셰이크(Shake), 붉은색 섬광(Red Flash), 실시간 플로팅 데미지 텍스트, 그리고 HP 바의 물리적 진동 연출을 통합하여 "
+            "퍼즐의 정답이 실제 물리적 타격으로 이어지는 인과관계를 완성했습니다.",
+          ),
+          _buildLogEntry(
+            "2026-02-05",
+            "마법 화살과 파티클: 베지어 곡선을 이용한 투사체 연출",
+            "단순한 직선 이동에서 벗어나 2차 베지어 곡선(Quadratic Bézier) 궤적을 도입하여 매번 다른 경로로 날아가는 역동성을 부여했습니다. "
+            "CustomPainter를 활용해 혜성 같은 잔상이 남는 마법 화살을 구현하고, 공기 저항과 중력을 모사한 파티클 시스템을 추가하여 RPG 특유의 화려한 타격감을 확보했습니다.",
+          ),
+          _buildLogEntry(
+            "2026-02-05",
+            "스도쿠와 전투의 결합: 라인 플래시 및 햅틱 피드백",
+            "퍼즐 풀이와 전투 시스템을 유기적으로 연결했습니다. 숫자를 맞히면 해당 행, 열, 3x3 박스가 황금색으로 번쩍이는 라인 플래시 효과를 통해 시각적 보상을 제공하고, "
+            "모바일 환경을 고려한 햅틱 피드백(Haptic Feedback)을 적용하여 손끝으로 느껴지는 타격감을 구현했습니다.",
+          ),
+          _buildLogEntry(
+            "2024-02-05",
+            "다크 모드 스도쿠의 색채 설계: 알파 블렌딩과 명암비 최적화",
+            "사용자가 평균 10분 이상 집중해야 하는 퍼즐 게임에서 배경색과 숫자 사이의 명암비(Contrast Ratio)는 게임의 성패를 가릅니다.\n\n"
+            "저희는 단순히 색상을 지정하는 방식에서 벗어나, 기본 배경(0xFF1E293B) 위에 투명도가 적용된 레이어를 중첩하는 Alpha Blending 기법을 도입했습니다. 이를 통해 선택된 행과 열이 은은하게 밝아지는 시각적 가이드를 구현했으며, WCAG 2.1 대비 표준을 준수하여 장시간 플레이 시에도 눈의 피로도를 최소화했습니다.\n\n"
+            "특히 34px의 대담한 폰트 크기와 3x3 격자의 시각적 위계 설정은 플레이어가 복잡한 숫자 배열 속에서도 논리적 패턴을 빠르게 포착할 수 있도록 돕습니다.",
+          ),
+          _buildLogEntry(
+            "2024-02-05",
+            "UI/UX 개편 및 멀티 뷰 시스템 도입",
+            "기본적인 게임 플레이를 넘어, 사용자에게 더 풍부한 정보를 제공하기 위해 사이트 구조를 전면 개편했습니다. "
+                "Flutter의 BottomNavigationBar를 활용한 네비게이션 시스템을 구축하고, 가이드와 위키 콘텐츠를 추가하여 앱의 완성도를 높였습니다.",
+          ),
+          _buildLogEntry(
+            "2024-01-30",
+            "데이터 영속성 및 레벨 시스템 안정화",
+            "LocalStorage를 이용한 사용자 데이터 저장 로직을 개선하여, 브라우저를 새로고침해도 골드와 경험치가 유지되도록 했습니다. "
+                "레벨업 시 능력치 증가 및 보너스 골드 지급 트리거를 최적화했습니다.",
+          ),
+          _buildLogEntry(
+            "2024-01-15",
+            "전투 엔진 및 Undo 기능 구현",
+            "스도쿠 입력값과 전투 데미지를 연동하는 핵심 로직을 완성했습니다. "
+                "사용자의 실수를 방지하기 위해 최대 3회까지 가능한 Undo 시스템을 스택 기반으로 구현했습니다.",
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogEntry(String date, String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.calendar_today, size: 16, color: Colors.indigoAccent),
+            const SizedBox(width: 8),
+            Text(date, style: const TextStyle(color: Colors.indigoAccent, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Text(content, style: const TextStyle(fontSize: 15, color: Colors.white70)),
+        const Divider(height: 40, thickness: 1),
+      ],
     );
   }
 }
 
 class SudokuScreen extends StatefulWidget {
-  const SudokuScreen({super.key});
+  final bool isGameStarted;
+  const SudokuScreen({super.key, this.isGameStarted = true});
 
   @override
   State<SudokuScreen> createState() => _SudokuScreenState();
@@ -91,15 +443,21 @@ class _SudokuScreenState extends State<SudokuScreen> with SingleTickerProviderSt
   late AnimationController _screenShakeController;
   late Animation<Offset> _screenShakeAnimation;
 
+  // 연출용 상태 추가
+  int? _flashingRow;
+  int? _flashingCol;
+  final List<Widget> _projectiles = [];
+  final List<Widget> _damageEffects = []; // 플로팅 데미지 효과 관리 리스트
+  final GlobalKey _monsterKey = GlobalKey();
+  final GlobalKey _gridKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _dungeonMap = DungeonMap(); // 던전 맵 초기화
     _currentMonster = MonsterTemplates.getMonsterForRoom(_dungeonMap.currentRoom.type); // 초기 몬스터 설정
     _loadUserData();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showDifficultySelector();
-    });
+    _createNewGame(); // 난이도 선택 기획 변경: 좌표 기반 자동 생성
 
     _screenShakeController = AnimationController(
       vsync: this,
@@ -121,6 +479,19 @@ class _SudokuScreenState extends State<SudokuScreen> with SingleTickerProviderSt
           _screenShakeController.reverse();
         }
       });
+
+    if (widget.isGameStarted) {
+      _startTimer();
+    }
+  }
+
+  @override
+  void didUpdateWidget(SudokuScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 홈 화면에서 게임 시작 버튼을 눌렀을 때 타이머 시작
+    if (widget.isGameStarted && !oldWidget.isGameStarted) {
+      _startTimer();
+    }
   }
 
   // 현재 방의 SudokuBoard를 가져오는 헬퍼 함수
@@ -170,14 +541,14 @@ class _SudokuScreenState extends State<SudokuScreen> with SingleTickerProviderSt
   }
 
   static const Map<Difficulty, int> _baseGold = {
-    Difficulty.easy: 10,
-    Difficulty.medium: 30,
-    Difficulty.hard: 100,
+    Difficulty.easy: 15,
+    Difficulty.medium: 50,
+    Difficulty.hard: 200, // 보상 대폭 강화
   };
   static const Map<Difficulty, int> _baseXp = {
-    Difficulty.easy: 50,
-    Difficulty.medium: 150,
-    Difficulty.hard: 500,
+    Difficulty.easy: 60,
+    Difficulty.medium: 250,
+    Difficulty.hard: 1200, // 보상 대폭 강화
   };
 
   static const Map<Difficulty, int> _targetTimes = {
@@ -403,27 +774,12 @@ class _SudokuScreenState extends State<SudokuScreen> with SingleTickerProviderSt
         }
 
         final int damageDealt = damage.toInt();
-        _currentMonster = _currentMonster.copyWith(
-          currentHp: (_currentMonster.currentHp - damageDealt).clamp(0, _currentMonster.maxHp),
-        );
-        logMessage += " ${_currentMonster.name}에게 $damageDealt의 데미지!";
-        _addCombatLog(logMessage);
+        _addCombatLog("$logMessage $damageDealt의 데미지를 준비합니다!");
 
-        bool monsterWasDefeated = _currentMonster.isDefeated();
-        if (monsterWasDefeated) {
-          _addCombatLog("${_currentMonster.name}을(를) 처치했습니다!");
-          _applyMonsterDefeatRewards(); // Apply rewards, but don't load next monster yet.
-        }
-
-        if (!_isMemoMode && _getCurrentSudokuBoard().isSolved()) {
-          _timer?.cancel();
-          _triggerSuccessSequence();
-        } else if (monsterWasDefeated) {
-          _loadNextMonster();
-        }
+        // 정답 연출 트리거 (데미지 정보 포함)
+        _triggerCorrectAnswerEffects(currentRow, currentCol, damageDealt);
 
       } else if (!isCorrectInput) {
-        _comboCount = 0;
         _lastCorrectEntryTime = null;
 
         final int damageTaken = _currentMonster.attackPower;
@@ -445,6 +801,115 @@ class _SudokuScreenState extends State<SudokuScreen> with SingleTickerProviderSt
         _lastCorrectEntryTime = null;
         _addCombatLog("숫자를 지웠습니다.");
       }
+    });
+  }
+
+  void _triggerCorrectAnswerEffects(int row, int col, int damageDealt) {
+    // 1. 햅틱 피드백
+    HapticFeedback.lightImpact();
+
+    // 2. 라인 플래시 효과 (0.3초간 황금색)
+    setState(() {
+      _flashingRow = row;
+      _flashingCol = col;
+    });
+    Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _flashingRow = null;
+          _flashingCol = null;
+        });
+      }
+    });
+
+    // 3. 투사체 애니메이션 생성
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _createProjectile(row, col, damageDealt);
+    });
+  }
+
+  void _createProjectile(int row, int col, int damageDealt) {
+    final RenderBox? monsterBox = _monsterKey.currentContext?.findRenderObject() as RenderBox?;
+    final RenderBox? gridBox = _gridKey.currentContext?.findRenderObject() as RenderBox?;
+
+    if (monsterBox == null || gridBox == null || !mounted) return;
+
+    final monsterPos = monsterBox.localToGlobal(Offset(monsterBox.size.width / 2, monsterBox.size.height / 2));
+    double cellSize = gridBox.size.width / 9;
+    Offset startOffset = Offset((col + 0.5) * cellSize, (row + 0.5) * cellSize);
+    final startPos = gridBox.localToGlobal(startOffset);
+
+    final RenderBox screenBox = context.findRenderObject() as RenderBox;
+    final relativeStart = screenBox.globalToLocal(startPos);
+    final relativeEnd = screenBox.globalToLocal(monsterPos);
+
+    late Widget projectile;
+    projectile = ProjectileAnimation(
+      key: UniqueKey(),
+      startPos: relativeStart,
+      endPos: relativeEnd,
+      onHit: () {
+        if (!mounted) return;
+        setState(() {
+          _projectiles.remove(projectile);
+          
+          // 4. 투사체 명중 시 실제 데미지 적용 및 리액션
+          _currentMonster = _currentMonster.copyWith(
+            currentHp: (_currentMonster.currentHp - damageDealt).clamp(0, _currentMonster.maxHp),
+          );
+          _addCombatLog("${_currentMonster.name}에게 ${damageDealt}의 타격!");
+          
+          // 몬스터 위치에서 플로팅 데미지 생성
+          _createFloatingDamage(monsterPos, damageDealt);
+
+          _screenShakeController.forward(from: 0.0);
+
+          // 몬스터 처치 확인
+          if (_currentMonster.isDefeated()) {
+            _addCombatLog("${_currentMonster.name}을(를) 처치했습니다!");
+            _applyMonsterDefeatRewards();
+            
+            // 퍼즐이 아직 안 끝났다면 다음 몬스터 소환
+            if (!_getCurrentSudokuBoard().isSolved()) {
+              _loadNextMonster();
+            }
+          }
+
+          // 퍼즐 완료 확인
+          if (!_isMemoMode && _getCurrentSudokuBoard().isSolved()) {
+            _timer?.cancel();
+            _triggerSuccessSequence();
+          }
+        });
+      },
+    );
+
+    setState(() {
+      _projectiles.add(projectile);
+    });
+  }
+
+  void _createFloatingDamage(Offset globalPos, int damage) {
+    // 화면 기준 위치로 변환
+    final RenderBox screenBox = context.findRenderObject() as RenderBox;
+    final relativePos = screenBox.globalToLocal(globalPos);
+
+    late Widget effect;
+    effect = FloatingDamage(
+      key: UniqueKey(),
+      position: relativePos,
+      damage: damage,
+      onComplete: () {
+        if (mounted) {
+          setState(() {
+            _damageEffects.remove(effect);
+          });
+        }
+      },
+    );
+
+    setState(() {
+      _damageEffects.add(effect);
     });
   }
 
@@ -490,7 +955,7 @@ class _SudokuScreenState extends State<SudokuScreen> with SingleTickerProviderSt
             child: ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                _showDifficultySelector();
+                _createNewGame();
               },
               child: const Text("다시 도전"),
             ),
@@ -542,44 +1007,18 @@ void _triggerSuccessSequence() async {
     }
     await _saveUserData();
 
-    String dialogContent = "기록: ${_formatTime(_secondsElapsed)}\n";
-    dialogContent += "획득 골드: $earnedGold G\n";
-    dialogContent += "획득 경험치: $earnedXp XP\n\n";
+    // 보상 정보를 전투 로그에 상세히 출력 (팝업 대신)
+    _addCombatLog("✨ 퍼즐 해결! 기록: ${_formatTime(_secondsElapsed)}");
+    _addCombatLog("💰 획득 골드: $earnedGold G / 💎 획득 경험치: $earnedXp XP");
     
     if (leveledUp) {
-      dialogContent += "🎉 레벨업! (Lv.${_userData.level - initialUserLevel} UP!)\n";
-      dialogContent += "레벨업 보너스: $bonusGoldFromLevelUp G\n\n";
+      _addCombatLog("🎊 레벨업! Lv.${_userData.level - initialUserLevel} 상승! 보너스: $bonusGoldFromLevelUp G");
     }
 
-    dialogContent += "현재 레벨: Lv.${_userData.level}\n";
-    dialogContent += "현재 XP: ${_userData.currentXp} / ${_userData.totalXpNeeded} XP\n";
-    dialogContent += "현재 골드: ${_userData.gold} G\n\n";
-    dialogContent += "새로운 도전을 시작할까요?";
-
-    // ignore: use_build_context_synchronously
-    showDialog(
-      context: currentContext,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text("🎉 퍼즐 해결!", textAlign: TextAlign.center),
-        content: Text(
-          dialogContent,
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                setState(() => _isSuccessAnimation = false);
-                // _showDifficultySelector(); // 방 클리어 후에는 난이도 선택 대신 이동 버튼을 보여줘야 함
-              },
-              child: const Text("새 게임 시작"),
-            ),
-          ),
-        ],
-      ),
-    );
+    _addCombatLog("현재 상태: Lv.${_userData.level} / ${_userData.gold} G");
+    
+    // 이동 버튼은 이미 setState에서 true로 설정됨
+    setState(() => _isSuccessAnimation = false);
   }
 }
 
@@ -596,7 +1035,7 @@ void _showGameOverDialog() {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _showDifficultySelector();
+              _createNewGame();
             }, 
             child: const Text("새 게임")
           )
@@ -616,28 +1055,6 @@ void _showGameOverDialog() {
     return isInitial || isCorrectlyFilled;
   }
 
-  void _showDifficultySelector() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text("새 게임 난이도 선택"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: Difficulty.values.map((d) {
-            return ListTile(
-              title: Text(d.label),
-              subtitle: Text("빈칸 개수: ${d.emptyCells}"),
-              onTap: () {
-                Navigator.pop(context);
-                _createNewGame(d);
-              },
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
 
   Widget _buildPauseOverlay() {
     return GestureDetector(
@@ -746,7 +1163,7 @@ void _showGameOverDialog() {
       child: Column( // KeyboardListener의 child는 Column
         children: [
         GameStatus(
-          difficulty: _getCurrentSudokuBoard().difficulty.label,
+          difficulty: "${_getCurrentSudokuBoard().difficulty.label} [${_getCurrentSudokuBoard().difficulty.rpgGrade}]",
           mistakes: _getCurrentSudokuBoard().mistakes,
           maxMistakes: _getCurrentSudokuBoard().maxMistakes,
           time: _formatTime(_secondsElapsed),
@@ -766,17 +1183,20 @@ void _showGameOverDialog() {
         Expanded(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.zero, // 패딩 제거로 가로폭 최대 활용
               child: _showMoveButtons
                   ? Stack( // 스도쿠 판 위에 메시지와 이동 버튼을 겹치기
                       children: [
                         SudokuGrid( // 클리어된 방은 이전 스도쿠 판을 그대로 보여줌
+                          key: _gridKey,
                           board: _getCurrentSudokuBoard(),
                           onCellTap: _onCellTapped,
                           selectedRow: _selectedRow,
                           selectedCol: _selectedCol,
                           errorMap: _getCurrentSudokuBoard().errorMap,
                           isSuccess: _isSuccessAnimation,
+                          flashingRow: _flashingRow,
+                          flashingCol: _flashingCol,
                         ),
                         // 클리어된 방일 경우 메시지 오버레이
                         if (_dungeonMap.currentRoom.isCleared)
@@ -807,12 +1227,15 @@ void _showGameOverDialog() {
                       ],
                     )
                   : SudokuGrid(
+                      key: _gridKey,
                       board: _getCurrentSudokuBoard(),
                       onCellTap: _onCellTapped,
                       selectedRow: _selectedRow,
                       selectedCol: _selectedCol,
                       errorMap: _getCurrentSudokuBoard().errorMap,
                       isSuccess: _isSuccessAnimation,
+                      flashingRow: _flashingRow,
+                      flashingCol: _flashingCol,
                     ),
             ),
           ),
@@ -864,41 +1287,11 @@ void _showGameOverDialog() {
     );
   }
 
-    @override
+  @override
   Widget build(BuildContext context) {
-    // build 메서드에서는 _isCellLocked를 직접 사용하지 않고 _buildGameScreen에 위임
-    
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.black),
-            onPressed: () {
-              _timer?.cancel();
-              _showDifficultySelector();
-            },
-          ),
-          // 강제 클리어 버튼
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _dungeonMap.currentRoom.isCleared = true;
-                _showMoveButtons = true;
-                _addCombatLog("현재 방을 강제 클리어했습니다!");
-              });
-            },
-            child: const Text("강제 클리어", style: TextStyle(color: Colors.black)),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100.0),
-          child: MonsterStatus(monster: _currentMonster),
-        ),
-      ),
-      body: Stack( // Use Stack to overlay the pause screen
+    return Container(
+      color: Colors.transparent,
+      child: Stack(
         children: [
           AnimatedBuilder(
             animation: _screenShakeAnimation,
@@ -908,30 +1301,79 @@ void _showGameOverDialog() {
                 child: child,
               );
             },
-            child: Row( // Row로 변경하여 미니맵과 게임 화면을 나란히 배치
+            child: Column(
               children: [
-                Expanded(
-                  child: Column( // 기존 Column 내용을 Expanded로 감싸고 디버그 UI 추가
+                // 기존 AppBar의 요소를 위젯으로 직접 배치
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // 디버그 UI: 현재 좌표 표시
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          "현재 위치: (${_dungeonMap.currentX}, ${_dungeonMap.currentY})",
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                      const Text(
+                        "Battle Area",
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigoAccent),
                       ),
-                      Expanded(child: _buildGameScreen()), // 게임 화면 헬퍼 호출
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.refresh, color: Colors.white70),
+                              onPressed: () {
+                                _createNewGame();
+                              },
+                          ),
+                          // 강제 클리어 버튼 (개발용)
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _dungeonMap.currentRoom.isCleared = true;
+                                _showMoveButtons = true;
+                                _addCombatLog("현재 방을 강제 클리어했습니다!");
+                              });
+                            },
+                            child: const Text("Clear", style: TextStyle(color: Colors.white30)),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-                MiniMap(dungeonMap: _dungeonMap), // 미니맵 위젯 추가
+                MonsterStatus(
+                  key: _monsterKey,
+                  monster: _currentMonster,
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Text(
+                                "Map Pos: (${_dungeonMap.currentX}, ${_dungeonMap.currentY})",
+                                style: const TextStyle(fontSize: 14, color: Colors.blueGrey),
+                              ),
+                            ),
+                            Expanded(child: _buildGameScreen()),
+                          ],
+                        ),
+                      ),
+                      if (MediaQuery.of(context).size.width > 600)
+                        MiniMap(dungeonMap: _dungeonMap),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-          if (_isPaused) _buildPauseOverlay(), // Overlay pause screen
+          if (_isPaused) _buildPauseOverlay(),
+          // 투사체 레이어 
+          ..._projectiles,
+          // 플로팅 데미지 레이어
+          ..._damageEffects,
         ],
-      )
+      ),
     );
   }
 }

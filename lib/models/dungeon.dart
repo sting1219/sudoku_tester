@@ -49,11 +49,22 @@ class DungeonMap {
     this.currentY = 2,
   }) {
     grid = List.generate(height, (y) => List.generate(width, (x) {
-      // 모든 방을 일단 normal, easy로 초기화
+      // 중심(2, 2)으로부터의 거리 계산 (Manhattan distance)
+      int distance = (x - 2).abs() + (y - 2).abs();
+      
+      Difficulty diff;
+      if (distance <= 1) {
+        diff = Difficulty.easy;
+      } else if (distance == 2) {
+        diff = Difficulty.medium;
+      } else {
+        diff = Difficulty.hard;
+      }
+
       return RoomData(
-        type: RoomType.normal,
-        difficulty: Difficulty.easy,
-        board: SudokuBoard(difficulty: Difficulty.easy),
+        type: (distance >= 3) ? RoomType.elite : RoomType.normal,
+        difficulty: diff,
+        board: SudokuBoard(difficulty: diff),
       );
     }));
   }
