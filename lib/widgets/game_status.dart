@@ -12,8 +12,11 @@ class GameStatus extends StatelessWidget {
   final int playerCurrentXp;
   final int playerTotalXpNeeded;
   final int playerGold;
-  final int playerCurrentHp; // Add this
-  final int playerMaxHp;     // Add this
+  final int playerCurrentHp;
+  final int playerMaxHp;
+  final int hintsRemaining; // 힌트 횟수
+  final int undoCount; // 실행 취소 횟수
+  final int maxUndoCount; // 최대 실행 취소 횟수
 
 
   const GameStatus({
@@ -27,8 +30,11 @@ class GameStatus extends StatelessWidget {
     required this.playerCurrentXp,
     required this.playerTotalXpNeeded,
     required this.playerGold,
-    required this.playerCurrentHp, // Add this
-    required this.playerMaxHp,     // Add this
+    required this.playerCurrentHp,
+    required this.playerMaxHp,
+    required this.hintsRemaining,
+    required this.undoCount,
+    required this.maxUndoCount,
   });
 
   @override
@@ -57,15 +63,12 @@ class GameStatus extends StatelessWidget {
             children: [
               _buildInfoItem("난이도", difficulty),
               _buildInfoItem("실수", "$mistakes/$maxMistakes"),
-              Row(
-                children: [
-                  _buildInfoItem("시간", time),
-                  const SizedBox(width: 10),
-                  IconButton(
-                    icon: const Icon(Icons.pause_circle_filled, color: Colors.blue),
-                    onPressed: onPauseTap,
-                  ),
-                ],
+              _buildInfoItem("시간", time),
+              _buildInfoItem("힌트", "$hintsRemaining"), // 힌트 횟수
+              _buildInfoItem("실행취소", "$undoCount/$maxUndoCount"), // 실행 취소 횟수
+              IconButton(
+                icon: const Icon(Icons.pause_circle_filled, color: Colors.blue),
+                onPressed: onPauseTap,
               ),
             ],
           ),

@@ -53,12 +53,20 @@ class _MonsterStatusState extends State<MonsterStatus> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    double hpPercentage = widget.monster.currentHp / widget.monster.maxHp;
-    if (hpPercentage < 0) hpPercentage = 0; // Ensure it doesn't go below 0
+    // 몬스터의 이름이 없거나 최대 체력이 0이면(전투 없는 방) 아무것도 표시하지 않음
+    if (widget.monster.name.isEmpty || widget.monster.maxHp <= 0) {
+      return const SizedBox(height: 140); // 다른 위젯과의 높이를 맞추기 위한 빈 공간
+    }
+
+    double hpPercentage = 0.0;
+    if (widget.monster.maxHp > 0) {
+      hpPercentage = widget.monster.currentHp / widget.monster.maxHp;
+    }
+    if (hpPercentage < 0) hpPercentage = 0;
 
     return Container(
       padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration( // Added back decoration for white background
+      decoration: BoxDecoration( 
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
       ),
@@ -67,45 +75,42 @@ class _MonsterStatusState extends State<MonsterStatus> with SingleTickerProvider
           Text(
             widget.monster.name,
             style: const TextStyle(
-              color: Colors.black, // Changed to black
+              color: Colors.black,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 5),
-          // Monster Image
           Container(
             width: 80,
             height: 80,
-            color: Colors.blueGrey[100], // Changed to a lighter color
+            color: Colors.blueGrey[100],
             foregroundDecoration: BoxDecoration(
-              color: _colorAnimation.value, // Apply animation color overlay
+              color: _colorAnimation.value,
             ),
             child: const Center(
-              child: Icon(Icons.psychology_alt, color: Colors.black, size: 50), // Changed to black
+              child: Icon(Icons.psychology_alt, color: Colors.black, size: 50),
             ),
           ),
           const SizedBox(height: 5),
-          // HP Bar
           LayoutBuilder(
             builder: (context, constraints) {
               final double barWidth = constraints.maxWidth;
               return Stack(
-                alignment: Alignment.center, // Center the text within the stack
+                alignment: Alignment.center,
                 children: [
-                  // Background (empty part of the bar)
                   Container(
                     width: barWidth,
-                    height: 12, // Slightly thicker
+                    height: 12,
                     decoration: BoxDecoration(
                       color: Colors.red[900],
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  // Foreground (filled part of the bar)
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
                       width: barWidth * hpPercentage,
                       height: 12,
                       decoration: BoxDecoration(
@@ -114,13 +119,13 @@ class _MonsterStatusState extends State<MonsterStatus> with SingleTickerProvider
                       ),
                     ),
                   ),
-                  // HP Text
                   Text(
                     '${widget.monster.currentHp}/${widget.monster.maxHp}',
                     style: const TextStyle(
-                      color: Colors.black, // Changed to black
+                      color: Colors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
+                      shadows: [Shadow(blurRadius: 1.0)],
                     ),
                   ),
                 ],

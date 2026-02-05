@@ -1,4 +1,5 @@
 // lib/models/combat_data.dart
+import 'package:sudoku_game/models/dungeon.dart'; // RoomType 임포트
 
 class Monster {
   final String name;
@@ -17,6 +18,18 @@ class Monster {
     required this.rewardGold,
     required this.rewardXp,
   }) : currentHp = currentHp ?? maxHp;
+
+  // 전투가 없는 방을 위한 빈 몬스터 객체 생성
+  factory Monster.empty() {
+    return Monster(
+      name: "없음",
+      maxHp: 1, // 최소 HP
+      currentHp: 1,
+      attackPower: 0,
+      rewardGold: 0,
+      rewardXp: 0,
+    );
+  }
 
   bool isDefeated() => currentHp <= 0;
 
@@ -76,5 +89,40 @@ class MonsterTemplates {
       rewardXp: 100,
     );
   }
-  // TODO: Add more monster types for different difficulties
+
+  static Monster numberGolem() {
+    return Monster(
+      name: "숫자 골렘",
+      maxHp: 5000,
+      attackPower: 25,
+      rewardGold: 150,
+      rewardXp: 300,
+    );
+  }
+
+  static Monster sudokuDragon() {
+    return Monster(
+      name: "스도쿠 드래곤",
+      maxHp: 10000,
+      attackPower: 50,
+      rewardGold: 500,
+      rewardXp: 1000,
+    );
+  }
+
+  // RoomType에 따라 다른 몬스터를 반환하는 메서드
+  static Monster getMonsterForRoom(RoomType type) {
+    switch (type) {
+      case RoomType.normal:
+        return numberSlime();
+      case RoomType.elite:
+        return numberGolem();
+      case RoomType.boss:
+        return sudokuDragon();
+      case RoomType.shop: // 상점 등 전투가 없는 방
+        return Monster.empty();
+      default:
+        return numberSlime(); // 기본 몬스터
+    }
+  }
 }

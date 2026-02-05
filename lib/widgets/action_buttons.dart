@@ -2,20 +2,24 @@ import 'package:flutter/material.dart';
 
 class ActionButtons extends StatelessWidget {
   final VoidCallback? onUndo;
-  final VoidCallback? onDelete;     // ✅ null 허용
-  final VoidCallback? onMemoToggle; // ✅ null 허용
-  final VoidCallback? onHint;       // ✅ null 허용
+  final VoidCallback? onDelete;
+  final VoidCallback? onMemoToggle;
+  final VoidCallback? onHint;
   final bool isMemoOn;
   final int hintCount;
+  final int undoCount; // 실행 취소 횟수
+  final int maxUndoCount; // 최대 실행 취소 횟수
 
   const ActionButtons({
     super.key,
     this.onUndo,
-    this.onDelete,     // ✅ required 제거
-    this.onMemoToggle, // ✅ required 제거
+    this.onDelete,
+    this.onMemoToggle,
     required this.isMemoOn,
     required this.hintCount,
-    this.onHint,       // ✅ required 제거
+    this.onHint,
+    required this.undoCount,
+    required this.maxUndoCount,
   });
 
   @override
@@ -25,7 +29,7 @@ class ActionButtons extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildActionButton(Icons.undo, "실행 취소", onUndo),
+          _buildActionButton(Icons.undo, "실행 취소 ($undoCount/$maxUndoCount)", onUndo),
           _buildActionButton(Icons.auto_fix_normal, "지우기", onDelete),
           _buildActionButton(
             isMemoOn ? Icons.edit : Icons.edit_off, 
@@ -39,16 +43,14 @@ class ActionButtons extends StatelessWidget {
     );
   }
 
-  // ⭐️ 중요: onTap의 타입을 VoidCallback? 로 변경
   Widget _buildActionButton(IconData icon, String label, VoidCallback? onTap, {String? statusText, int? badgeCount}) {
-    // 버튼이 비활성화되었을 때 색상을 흐리게 설정
     final bool isEnabled = onTap != null;
     final Color mainColor = isEnabled ? Colors.blueGrey[700]! : Colors.grey[300]!;
 
     return InkWell(
-      onTap: onTap, // 이제 null이 들어오면 터치가 작동하지 않습니다.
+      onTap: onTap,
       child: Opacity(
-        opacity: isEnabled ? 1.0 : 0.5, // ⭐️ 비활성화 시 반투명 효과
+        opacity: isEnabled ? 1.0 : 0.5,
         child: Column(
           children: [
             Stack(

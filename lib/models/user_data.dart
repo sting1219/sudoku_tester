@@ -11,6 +11,13 @@ class UserStats {
     this.noMissCount = 0,
   });
 
+  UserStats clone() {
+    return UserStats(
+      totalCleared: totalCleared,
+      noMissCount: noMissCount,
+    );
+  }
+
   factory UserStats.fromJson(Map<String, dynamic> json) {
     return UserStats(
       totalCleared: json['total_cleared'] ?? 0,
@@ -41,6 +48,15 @@ class UserData {
     UserStats? stats,
   }) : stats = stats ?? UserStats(),
        totalXpNeeded = _calculateXpNeeded(level); // 초기 totalXpNeeded 계산
+
+  UserData clone() {
+    return UserData(
+      level: level,
+      currentXp: currentXp,
+      gold: gold,
+      stats: stats.clone(), // 깊은 복사
+    )..totalXpNeeded = totalXpNeeded;
+  }
 
   // 다음 레벨에 필요한 경험치 계산 (현재 레벨 * 500)
   static int _calculateXpNeeded(int level) {
@@ -106,7 +122,13 @@ class LocalStorageService {
   static Future<UserData> loadUserData() async {
     final String? userDataJson = web.window.localStorage.getItem(_userDataKey);
     if (userDataJson != null) {
-      return UserData.fromJson(jsonDecode(userDataJson));
+      try {
+        return UserData.fromJson(jsonDecode(userDataJson));
+      } catch (e) {
+        print("Error decoding user data: $e");
+        //Decoding 에러 발생 시 초기 데이터로 리셋
+        return UserData.initial();
+      }
     }
     return UserData.initial(); // 데이터가 없으면 초기값 반환
   }
