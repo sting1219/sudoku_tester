@@ -14,6 +14,7 @@ import 'widgets/action_buttons.dart';
 import 'widgets/ad_element.dart';
 import 'widgets/monster_status.dart';
 import 'widgets/combat_log.dart';
+import 'widgets/sudoku_grid.dart';
 import 'widgets/projectile_animation.dart';
 import 'widgets/floating_damage.dart';
 

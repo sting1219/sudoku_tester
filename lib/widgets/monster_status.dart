@@ -44,11 +44,11 @@ class _MonsterStatusState extends State<MonsterStatus> with TickerProviderStateM
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    _shakeAnimation = TweenSequence([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: -8.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -8.0, end: 8.0), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 8.0, end: -5.0), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -5.0, end: 0.0), weight: 1),
+    _shakeAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: -8.0), weight: 1.0),
+      TweenSequenceItem(tween: Tween<double>(begin: -8.0, end: 8.0), weight: 2.0),
+      TweenSequenceItem(tween: Tween<double>(begin: 8.0, end: -5.0), weight: 2.0),
+      TweenSequenceItem(tween: Tween<double>(begin: -5.0, end: 0.0), weight: 1.0),
     ]).animate(CurvedAnimation(parent: _shakeController, curve: Curves.linear));
 
     // 3. HP 바 진동(Shudder) 컨트롤러
@@ -56,12 +56,12 @@ class _MonsterStatusState extends State<MonsterStatus> with TickerProviderStateM
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
-    _shudderAnimation = TweenSequence([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 2.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 2.0, end: -2.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -2.0, end: 1.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 1),
-    ]).animate(CurvedAnimation(parent: _shudderController, curve: Curves.elasticIn));
+    _shudderAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 0.0, end: 2.0), weight: 1.0),
+      TweenSequenceItem(tween: Tween<double>(begin: 2.0, end: -2.0), weight: 1.0),
+      TweenSequenceItem(tween: Tween<double>(begin: -2.0, end: 1.0), weight: 1.0),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.0), weight: 1.0),
+    ]).animate(CurvedAnimation(parent: _shudderController, curve: Curves.linear));
   }
 
   @override
@@ -196,7 +196,7 @@ class _MonsterStatusState extends State<MonsterStatus> with TickerProviderStateM
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
-                                fontWeight: FontWeight.black,
+                                fontWeight: FontWeight.w900,
                                 shadows: [Shadow(color: Colors.black, blurRadius: 2)],
                               ),
                             ),

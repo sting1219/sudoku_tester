@@ -63,7 +63,7 @@ class _FloatingDamageState extends State<FloatingDamage> with SingleTickerProvid
           style: const TextStyle(
             color: Colors.redAccent,
             fontSize: 28,
-            fontWeight: FontWeight.black,
+            fontWeight: FontWeight.w900,
             shadows: [
               Shadow(color: Colors.black, blurRadius: 4, offset: Offset(2, 2)),
             ],
