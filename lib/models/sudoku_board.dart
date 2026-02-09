@@ -18,7 +18,11 @@ enum Difficulty {
   final int emptyCells;
   final String label;
   final String rpgGrade;
-  const Difficulty({required this.emptyCells, required this.label, required this.rpgGrade});
+  const Difficulty({
+    required this.emptyCells,
+    required this.label,
+    required this.rpgGrade,
+  });
 }
 
 class SudokuBoard {
@@ -26,7 +30,10 @@ class SudokuBoard {
   late List<List<int>> solution;
   late List<List<int>> currentGrid;
   List<List<bool>> errorMap = List.generate(9, (_) => List.filled(9, false));
-  List<List<List<int>>> notes = List.generate(9, (_) => List.generate(9, (_) => []));
+  List<List<List<int>>> notes = List.generate(
+    9,
+    (_) => List.generate(9, (_) => []),
+  );
   late List<List<bool>> scoreAwarded;
 
   int mistakes = 0;
@@ -52,12 +59,20 @@ class SudokuBoard {
   // Method to create a deep copy of the board state.
   SudokuBoard clone() {
     final newBoard = SudokuBoard(difficulty: difficulty);
-    newBoard.initialGrid = initialGrid.map((row) => List<int>.from(row)).toList();
+    newBoard.initialGrid = initialGrid
+        .map((row) => List<int>.from(row))
+        .toList();
     newBoard.solution = solution.map((row) => List<int>.from(row)).toList();
-    newBoard.currentGrid = currentGrid.map((row) => List<int>.from(row)).toList();
+    newBoard.currentGrid = currentGrid
+        .map((row) => List<int>.from(row))
+        .toList();
     newBoard.errorMap = errorMap.map((row) => List<bool>.from(row)).toList();
-    newBoard.notes = notes.map((row) => row.map((cell) => List<int>.from(cell)).toList()).toList();
-    newBoard.scoreAwarded = scoreAwarded.map((row) => List<bool>.from(row)).toList();
+    newBoard.notes = notes
+        .map((row) => row.map((cell) => List<int>.from(cell)).toList())
+        .toList();
+    newBoard.scoreAwarded = scoreAwarded
+        .map((row) => List<bool>.from(row))
+        .toList();
     newBoard.mistakes = mistakes;
     newBoard.score = score;
     return newBoard;
@@ -90,11 +105,14 @@ class SudokuBoard {
     return true;
   }
 
-  static List<List<int>> _createPuzzle(List<List<int>> solved, Difficulty diff) {
+  static List<List<int>> _createPuzzle(
+    List<List<int>> solved,
+    Difficulty diff,
+  ) {
     List<List<int>> puzzle = solved.map((row) => List<int>.from(row)).toList();
     int cellsToRemove = diff.emptyCells;
     Random random = Random();
-    
+
     while (cellsToRemove > 0) {
       int r = random.nextInt(9);
       int c = random.nextInt(9);
@@ -148,9 +166,30 @@ class SudokuBoard {
             score += 10;
             scoreAwarded[row][col] = true;
           }
+          // 정답을 입력했을 때 주변 관련 칸의 메모를 지웁니다.
+          _clearNotesInScope(row, col, number);
         }
       } else {
         errorMap[row][col] = false;
+      }
+    }
+  }
+
+  void _clearNotesInScope(int row, int col, int number) {
+    // 1. 같은 행의 메모 제거
+    for (int c = 0; c < 9; c++) {
+      notes[row][c].remove(number);
+    }
+    // 2. 같은 열의 메모 제거
+    for (int r = 0; r < 9; r++) {
+      notes[r][col].remove(number);
+    }
+    // 3. 같은 3x3 박스의 메모 제거
+    int startRow = (row ~/ 3) * 3;
+    int startCol = (col ~/ 3) * 3;
+    for (int r = startRow; r < startRow + 3; r++) {
+      for (int c = startCol; c < startCol + 3; c++) {
+        notes[r][c].remove(number);
       }
     }
   }
