@@ -1,76 +1,215 @@
 import 'dart:convert';
-import 'package:web/web.dart' as web; // Use package:web
+import 'package:web/web.dart' as web;
+import 'dungeon.dart';
 
-// UserStats 모델 정의
+class GameSettings {
+  bool autoEraserEnabled;
+
+  GameSettings({this.autoEraserEnabled = true});
+
+  GameSettings clone() => GameSettings(autoEraserEnabled: autoEraserEnabled);
+
+  factory GameSettings.fromJson(Map<String, dynamic> json) {
+    return GameSettings(autoEraserEnabled: json['auto_eraser_enabled'] ?? true);
+  }
+
+  Map<String, dynamic> toJson() => {'auto_eraser_enabled': autoEraserEnabled};
+}
+
 class UserStats {
-  int totalCleared;
-  int noMissCount;
+  final int totalGamesPlayed;
+  final int totalGamesWon;
+  final Duration? bestTime;
+  final int totalMistakes;
+  final List<ClearedRoom> archive;
+  final int totalCleared;
+  final int noMissCount;
+  final String activeTitle;
+  final List<String> unlockedTitles;
 
   UserStats({
+    this.totalGamesPlayed = 0,
+    this.totalGamesWon = 0,
+    this.bestTime,
+    this.totalMistakes = 0,
+    this.archive = const [],
     this.totalCleared = 0,
     this.noMissCount = 0,
+    this.activeTitle = "",
+    this.unlockedTitles = const [],
   });
 
   UserStats clone() {
     return UserStats(
+      totalGamesPlayed: totalGamesPlayed,
+      totalGamesWon: totalGamesWon,
+      bestTime: bestTime,
+      totalMistakes: totalMistakes,
+      archive: archive.map((e) => e.clone()).toList(),
       totalCleared: totalCleared,
       noMissCount: noMissCount,
+      activeTitle: activeTitle,
+      unlockedTitles: List<String>.from(unlockedTitles),
     );
   }
 
   factory UserStats.fromJson(Map<String, dynamic> json) {
     return UserStats(
+      totalGamesPlayed: json['total_games_played'] ?? 0,
+      totalGamesWon: json['total_games_won'] ?? 0,
+      bestTime: json['best_time'] != null
+          ? Duration(microseconds: json['best_time'])
+          : null,
+      totalMistakes: json['total_mistakes'] ?? 0,
+      archive:
+          (json['archive'] as List<dynamic>?)
+              ?.map((e) => ClearedRoom.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
       totalCleared: json['total_cleared'] ?? 0,
       noMissCount: json['no_miss_count'] ?? 0,
+      activeTitle: json['active_title'] ?? "",
+      unlockedTitles:
+          (json['unlocked_titles'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'total_games_played': totalGamesPlayed,
+      'total_games_won': totalGamesWon,
+      'best_time': bestTime?.inMicroseconds,
+      'total_mistakes': totalMistakes,
+      'archive': archive.map((e) => e.toJson()).toList(),
       'total_cleared': totalCleared,
       'no_miss_count': noMissCount,
+      'active_title': activeTitle,
+      'unlocked_titles': unlockedTitles,
+    };
+  }
+
+  UserStats copyWith({
+    int? totalGamesPlayed,
+    int? totalGamesWon,
+    Duration? bestTime,
+    int? totalMistakes,
+    List<ClearedRoom>? archive,
+    int? totalCleared,
+    int? noMissCount,
+    String? activeTitle,
+    List<String>? unlockedTitles,
+  }) {
+    return UserStats(
+      totalGamesPlayed: totalGamesPlayed ?? this.totalGamesPlayed,
+      totalGamesWon: totalGamesWon ?? this.totalGamesWon,
+      bestTime: bestTime ?? this.bestTime,
+      totalMistakes: totalMistakes ?? this.totalMistakes,
+      archive: archive ?? this.archive,
+      totalCleared: totalCleared ?? this.totalCleared,
+      noMissCount: noMissCount ?? this.noMissCount,
+      activeTitle: activeTitle ?? this.activeTitle,
+      unlockedTitles: unlockedTitles ?? this.unlockedTitles,
+    );
+  }
+}
+
+class ClearedRoom {
+  final String artifactName;
+  final String artifactLore;
+  final int artifactNumber;
+  final RoomType type;
+  final String clearedDate;
+  final List<int> boardSnapshot; // Flattened 9x9 board
+
+  ClearedRoom({
+    required this.artifactName,
+    required this.artifactLore,
+    required this.artifactNumber,
+    required this.type,
+    required this.clearedDate,
+    this.boardSnapshot = const [],
+  });
+
+  ClearedRoom clone() {
+    return ClearedRoom(
+      artifactName: artifactName,
+      artifactLore: artifactLore,
+      artifactNumber: artifactNumber,
+      type: type,
+      clearedDate: clearedDate,
+      boardSnapshot: List<int>.from(boardSnapshot),
+    );
+  }
+
+  factory ClearedRoom.fromJson(Map<String, dynamic> json) {
+    return ClearedRoom(
+      artifactName: json['artifact_name'] ?? "",
+      artifactLore: json['artifact_lore'] ?? "",
+      artifactNumber: json['artifact_number'] ?? 0,
+      type: RoomType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => RoomType.normal,
+      ),
+      clearedDate: json['cleared_date'] ?? "",
+      boardSnapshot:
+          (json['board_snapshot'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toList() ??
+          const [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'artifact_name': artifactName,
+      'artifact_lore': artifactLore,
+      'artifact_number': artifactNumber,
+      'type': type.name,
+      'cleared_date': clearedDate,
+      'board_snapshot': boardSnapshot,
     };
   }
 }
 
-// UserData 모델 정의
 class UserData {
   int level;
   int currentXp;
   int totalXpNeeded;
   int gold;
   UserStats stats;
+  GameSettings settings;
 
   UserData({
     this.level = 1,
     this.currentXp = 0,
     this.gold = 0,
     UserStats? stats,
+    GameSettings? settings,
   }) : stats = stats ?? UserStats(),
-       totalXpNeeded = _calculateXpNeeded(level); // 초기 totalXpNeeded 계산
+       settings = settings ?? GameSettings(),
+       totalXpNeeded = _calculateXpNeeded(level);
 
   UserData clone() {
     return UserData(
       level: level,
       currentXp: currentXp,
       gold: gold,
-      stats: stats.clone(), // 깊은 복사
+      stats: stats.clone(),
+      settings: settings.clone(),
     )..totalXpNeeded = totalXpNeeded;
   }
 
-  // 다음 레벨에 필요한 경험치 계산 (현재 레벨 * 500)
-  static int _calculateXpNeeded(int level) {
-    return level * 500;
-  }
+  static int _calculateXpNeeded(int level) => level * 500;
 
-  // 레벨업 처리
   void levelUp() {
     level++;
-    currentXp -= totalXpNeeded; // 남은 경험치 처리
-    totalXpNeeded = _calculateXpNeeded(level); // 다음 레벨 필요 경험치 갱신
+    currentXp -= totalXpNeeded;
+    totalXpNeeded = _calculateXpNeeded(level);
   }
 
-  // 경험치 추가
   void addXp(int xp) {
     currentXp += xp;
     while (currentXp >= totalXpNeeded) {
@@ -78,10 +217,7 @@ class UserData {
     }
   }
 
-  // 골드 추가
-  void addGold(int amount) {
-    gold += amount;
-  }
+  void addGold(int amount) => gold += amount;
 
   factory UserData.fromJson(Map<String, dynamic> json) {
     return UserData(
@@ -91,31 +227,24 @@ class UserData {
       stats: json['stats'] != null
           ? UserStats.fromJson(json['stats'])
           : UserStats(),
+      settings: json['settings'] != null
+          ? GameSettings.fromJson(json['settings'])
+          : GameSettings(),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'level': level,
-      'current_xp': currentXp,
-      'total_xp_needed': totalXpNeeded,
-      'gold': gold,
-      'stats': stats.toJson(),
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'level': level,
+    'current_xp': currentXp,
+    'total_xp_needed': totalXpNeeded,
+    'gold': gold,
+    'stats': stats.toJson(),
+    'settings': settings.toJson(),
+  };
 
-  // 초기 유저 데이터 생성을 위한 팩토리 (데이터 없을 경우)
-  factory UserData.initial() {
-    return UserData(
-      level: 1,
-      currentXp: 0,
-      gold: 0,
-      stats: UserStats(),
-    );
-  }
+  factory UserData.initial() => UserData();
 }
 
-// LocalStorageService 구현
 class LocalStorageService {
   static const String _userDataKey = 'sudokuUserData';
 
@@ -125,12 +254,10 @@ class LocalStorageService {
       try {
         return UserData.fromJson(jsonDecode(userDataJson));
       } catch (e) {
-        print("Error decoding user data: $e");
-        //Decoding 에러 발생 시 초기 데이터로 리셋
         return UserData.initial();
       }
     }
-    return UserData.initial(); // 데이터가 없으면 초기값 반환
+    return UserData.initial();
   }
 
   static Future<void> saveUserData(UserData userData) async {

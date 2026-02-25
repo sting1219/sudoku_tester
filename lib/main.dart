@@ -7,6 +7,8 @@ import 'models/user_data.dart';
 import 'models/combat_data.dart';
 import 'models/dungeon.dart'; // DungeonMap 임포트
 import 'widgets/minimap.dart'; // MiniMap 위젯 임포트
+import 'package:google_fonts/google_fonts.dart';
+import 'widgets/firefly_background.dart';
 
 import 'widgets/number_keypad.dart';
 import 'widgets/game_status.dart';
@@ -17,6 +19,11 @@ import 'widgets/combat_log.dart';
 import 'widgets/sudoku_grid.dart';
 import 'widgets/projectile_animation.dart';
 import 'widgets/floating_damage.dart';
+import 'widgets/particle_overlay.dart';
+import 'widgets/purification_gauge.dart';
+import 'widgets/archive_view.dart';
+import 'data/lore_data.dart';
+import 'models/sound_manager.dart';
 
 // GameState class to hold a snapshot of the entire game state for the undo feature.
 class GameState {
@@ -54,9 +61,10 @@ class SudokuApp extends StatelessWidget {
       title: 'Sudoku RPG',
       theme: ThemeData(
         brightness: Brightness.dark,
-        primarySwatch: Colors.indigo,
+        primarySwatch: Colors.teal,
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        scaffoldBackgroundColor: const Color(0xFF0F1A15), // Deep Forest Emerald
+        textTheme: GoogleFonts.cinzelTextTheme(ThemeData.dark().textTheme),
       ),
       home: const MainLayout(),
     );
@@ -159,66 +167,101 @@ class HomeView extends StatelessWidget {
           ),
         ),
 
-        // 게임 영역 + 오버레이
         Expanded(
-          child: Stack(
-            children: [
-              SudokuScreen(isGameStarted: isStarted),
-              if (!isStarted)
-                Positioned.fill(
-                  child: Container(
-                    color: Colors.black.withOpacity(0.8),
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Center(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: onStart,
-                              icon: const Icon(Icons.play_arrow, size: 32),
-                              label: const Text(
-                                "게임 시작하기",
-                                style: TextStyle(fontSize: 20),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.indigoAccent,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 48,
-                                  vertical: 20,
+          child: FireflyBackground(
+            child: Stack(
+              children: [
+                SudokuScreen(isGameStarted: isStarted),
+                if (!isStarted)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withOpacity(0.8),
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Center(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: onStart,
+                                icon: const Icon(Icons.play_arrow, size: 32),
+                                label: const Text(
+                                  "게임 시작하기",
+                                  style: TextStyle(fontSize: 20),
                                 ),
-                                elevation: 10,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.indigoAccent,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 48,
+                                    vertical: 20,
+                                  ),
+                                  elevation: 10,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 30),
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.08),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white12),
-                              ),
-                              child: Text(
-                                _longDescription,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white,
-                                  height: 1.5,
+                              const SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  LocalStorageService.loadUserData().then((
+                                    data,
+                                  ) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            ArchiveView(stats: data.stats),
+                                      ),
+                                    );
+                                  });
+                                },
+                                icon: const Icon(
+                                  Icons.inventory_2,
+                                  color: Colors.amber,
                                 ),
-                                textAlign: TextAlign.center,
+                                label: const Text(
+                                  "아카이브 (도감)",
+                                  style: TextStyle(color: Colors.amber),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Colors.amber),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 40,
+                                    vertical: 15,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 30),
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white12),
+                                ),
+                                child: Text(
+                                  _longDescription,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white,
+                                    height: 1.5,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -588,6 +631,7 @@ class _SudokuScreenState extends State<SudokuScreen>
   int _undoUses = 0;
   bool _isPaused = false;
   bool _isSuccessAnimation = false;
+  bool _isDungeonCleared = false; // 던전 전체 정화 상태 추가
   bool _showMoveButtons = false; // 방 클리어 후 이동 버튼 표시 여부
 
   final List<String> _combatLogMessages = [];
@@ -601,6 +645,12 @@ class _SudokuScreenState extends State<SudokuScreen>
   // 연출용 상태 추가
   int? _flashingRow;
   int? _flashingCol;
+  List<Map<String, int>> _currentConflicts = [];
+  int? _errorRow;
+  int? _errorCol;
+  double _conflictAnimationValue = 0.0;
+  String? _errorExplanation;
+  Timer? _errorResetTimer;
   final List<Widget> _projectiles = [];
   final List<Widget> _damageEffects = []; // 플로팅 데미지 효과 관리 리스트
   final GlobalKey _monsterKey = GlobalKey();
@@ -730,7 +780,6 @@ class _SudokuScreenState extends State<SudokuScreen>
     if (mistakes == 0) {
       gold *= 1.2;
       xp *= 1.2;
-      _userData.stats.noMissCount++;
     }
 
     final targetTime = _targetTimes[difficulty];
@@ -739,7 +788,15 @@ class _SudokuScreenState extends State<SudokuScreen>
       xp *= 1.3;
     }
 
-    _userData.stats.totalCleared++;
+    // 통계 업데이트 (copyWith 사용)
+    _userData.stats = _userData.stats.copyWith(
+      totalGamesWon: _userData.stats.totalGamesWon + 1,
+      noMissCount: (mistakes == 0)
+          ? _userData.stats.noMissCount + 1
+          : _userData.stats.noMissCount,
+      totalCleared: _userData.stats.totalCleared + 1,
+    );
+
     return (gold.toInt(), xp.toInt());
   }
 
@@ -927,6 +984,7 @@ class _SudokuScreenState extends State<SudokuScreen>
         currentCol,
         number,
         isMemoMode: _isMemoMode,
+        autoEraserEnabled: _userData.settings.autoEraserEnabled,
       );
 
       if (_isMemoMode) {
@@ -946,7 +1004,7 @@ class _SudokuScreenState extends State<SudokuScreen>
         String logMessage = "$number를 맞혔습니다!";
 
         if (_lastCorrectEntryTime != null &&
-            DateTime.now().difference(_lastCorrectEntryTime!).inSeconds < 3) {
+            DateTime.now().difference(_lastCorrectEntryTime!).inSeconds < 5) {
           _comboCount++;
           damage *= (1 + _comboCount * 0.1);
           logMessage += " 콤보! ${_comboCount}연타!";
@@ -967,6 +1025,9 @@ class _SudokuScreenState extends State<SudokuScreen>
         _triggerCorrectAnswerEffects(currentRow, currentCol, damageDealt);
       } else if (!isCorrectInput) {
         _lastCorrectEntryTime = null;
+
+        // 오류 고도화 로직 트리거
+        _triggerErrorEffects(currentRow, currentCol, number);
 
         final int damageTaken = _currentMonster.attackPower;
         _playerCombatStats = _playerCombatStats.copyWith(
@@ -997,9 +1058,72 @@ class _SudokuScreenState extends State<SudokuScreen>
     });
   }
 
+  void _handleCellLongPress(int row, int col) {
+    if (_isPaused || _isSuccessAnimation) return;
+    if (_getCurrentSudokuBoard().initialGrid[row][col] != 0 ||
+        _getCurrentSudokuBoard().currentGrid[row][col] != 0)
+      return;
+
+    setState(() {
+      _getCurrentSudokuBoard().fillPossibleNotes(row, col);
+    });
+    HapticFeedback.mediumImpact();
+    _addCombatLog("후보수를 자동으로 분석하여 메모했습니다.");
+  }
+
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF0F1A15),
+              title: const Text("게임 설정", style: TextStyle(color: Colors.white)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SwitchListTile(
+                    title: const Text(
+                      "메모 자동 삭제",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    subtitle: const Text(
+                      "정답 입력 시 주변 메모를 자동으로 제거합니다.",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    value: _userData.settings.autoEraserEnabled,
+                    activeColor: const Color(0xFF00E5FF),
+                    onChanged: (bool value) {
+                      setState(() {
+                        _userData.settings.autoEraserEnabled = value;
+                      });
+                      setDialogState(() {});
+                      _saveUserData();
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "닫기",
+                    style: TextStyle(color: Color(0xFF00E5FF)),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _triggerCorrectAnswerEffects(int row, int col, int damageDealt) {
-    // 1. 햅틱 피드백
+    // 1. 햅틱 및 사운드 피드백
     HapticFeedback.lightImpact();
+    SoundManager.instance.playComboSound(_comboCount);
 
     // 2. 라인 플래시 효과 (0.3초간 황금색)
     setState(() {
@@ -1015,10 +1139,91 @@ class _SudokuScreenState extends State<SudokuScreen>
       }
     });
 
-    // 3. 투사체 애니메이션 생성
+    // 3. 투사체 및 파워 파티클 연출 트리거
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _createProjectile(row, col, damageDealt);
+      _triggerParticleEffect(row, col);
     });
+  }
+
+  void _triggerErrorEffects(int row, int col, int number) {
+    HapticFeedback.heavyImpact();
+    SoundManager.instance.playWrongSound();
+    _errorResetTimer?.cancel();
+
+    setState(() {
+      _errorRow = row;
+      _errorCol = col;
+      _currentConflicts = _getCurrentSudokuBoard().getConflicts(
+        row,
+        col,
+        number,
+      );
+      _conflictAnimationValue = 1.0;
+
+      // 충돌 유형 분석 및 메시지 생성
+      String? message;
+      bool rowConflict = _currentConflicts.any(
+        (c) => c['row'] == row && c['col'] != col,
+      );
+      bool colConflict = _currentConflicts.any(
+        (c) => c['col'] == col && c['row'] != row,
+      );
+      bool boxConflict = _currentConflicts.any(
+        (c) =>
+            (c['row']! ~/ 3 == row ~/ 3) &&
+            (c['col']! ~/ 3 == col ~/ 3) &&
+            (c['row'] != row || c['col'] != col),
+      );
+
+      if (rowConflict)
+        message = "가로줄에 이미 $number가 존재합니다.";
+      else if (colConflict)
+        message = "세로줄에 이미 $number가 존재합니다.";
+      else if (boxConflict)
+        message = "3x3 구역 내에 이미 $number가 존재합니다.";
+      else
+        message = "잘못된 숫자입니다!";
+
+      _errorExplanation = message;
+    });
+
+    // 레이저 페이드 아웃 애니메이션
+    Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (!mounted || _conflictAnimationValue <= 0) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _conflictAnimationValue -= 0.05;
+        if (_conflictAnimationValue < 0) _conflictAnimationValue = 0;
+      });
+    });
+
+    _errorResetTimer = Timer(const Duration(seconds: 1), () {
+      if (mounted) {
+        setState(() {
+          _errorRow = null;
+          _errorCol = null;
+          _currentConflicts = [];
+          _errorExplanation = null;
+        });
+      }
+    });
+
+    _screenShakeController.forward(from: 0.0);
+  }
+
+  void _triggerParticleEffect(int row, int col) {
+    final RenderBox? gridBox =
+        _gridKey.currentContext?.findRenderObject() as RenderBox?;
+    if (gridBox == null || !mounted) return;
+
+    double cellSize = gridBox.size.width / 9;
+    Offset localCenter = Offset((col + 0.5) * cellSize, (row + 0.5) * cellSize);
+    final globalCenter = gridBox.localToGlobal(localCenter);
+
+    ParticleOverlay.show(context, globalCenter);
   }
 
   void _createProjectile(int row, int col, int damageDealt) {
@@ -1063,6 +1268,8 @@ class _SudokuScreenState extends State<SudokuScreen>
           _createFloatingDamage(monsterPos, damageDealt);
 
           _screenShakeController.forward(from: 0.0);
+
+          SoundManager.instance.playHitSound();
 
           // 몬스터 처치 확인
           if (_currentMonster.isDefeated()) {
@@ -1185,7 +1392,51 @@ class _SudokuScreenState extends State<SudokuScreen>
       _selectedCol = null;
       // 이전에 클리어되지 않은 방만 보상 로직을 거치도록 처리
       if (!_dungeonMap.currentRoom.isCleared) {
-        _dungeonMap.currentRoom.isCleared = true; // 현재 방 클리어 상태로 변경
+        final room = _dungeonMap.currentRoom;
+        room.isCleared = true; // 현재 방 클리어 상태로 변경
+
+        // 아카이브 추가 (보드 스냅샷 및 LoreData 연동)
+        final boardSnapshot = <int>[];
+        for (int r = 0; r < 9; r++) {
+          for (int c = 0; c < 9; c++) {
+            boardSnapshot.add(room.board.currentGrid[r][c]);
+          }
+        }
+
+        final now = DateTime.now();
+        final dateStr = "${now.year}-${now.month}-${now.day}";
+        _userData.stats = _userData.stats.copyWith(
+          archive: [
+            ..._userData.stats.archive,
+            ClearedRoom(
+              artifactName: room.artifactName,
+              artifactLore: LoreData.getLore(room.artifactNumber),
+              artifactNumber: room.artifactNumber,
+              type: room.type,
+              clearedDate: dateStr,
+              boardSnapshot: boardSnapshot,
+            ),
+          ],
+        );
+
+        // 정화율 체크 및 칭호 부여
+        if (_dungeonMap.purificationRate >= 1.0) {
+          if (!_userData.stats.unlockedTitles.contains("던전의 축복")) {
+            _userData.stats = _userData.stats.copyWith(
+              unlockedTitles: [..._userData.stats.unlockedTitles, "던전의 축복"],
+              activeTitle: "던전의 축복",
+            );
+            _addCombatLog("✨ 전설적인 업적 달성! '던전의 축복' 칭호를 획득했습니다! ✨");
+          }
+        }
+
+        _saveUserData();
+
+        // 보스방 클리어 시 전체 던전 클리어 연출 발동
+        if (room.type == RoomType.boss) {
+          _isDungeonCleared = true;
+          _addCombatLog("🎉 축하합니다! 던전의 핵심 근원인 보스를 처치하여 던전이 정화되었습니다!");
+        }
       }
       _showMoveButtons = true; // 이동 버튼 표시
     });
@@ -1318,6 +1569,10 @@ class _SudokuScreenState extends State<SudokuScreen>
           _dungeonMap.currentRoom.type,
         ); // 현재 방 타입에 맞는 몬스터 로드
         _startTimer(); // 타이머 시작
+
+        if (_dungeonMap.currentRoom.type == RoomType.boss) {
+          _addCombatLog("⚠️ 경고: 보스의 방에 진입했습니다! 강력한 기운이 느껴집니다!");
+        }
       }
     });
   }
@@ -1327,60 +1582,137 @@ class _SudokuScreenState extends State<SudokuScreen>
     String direction,
     IconData icon,
     int targetX,
-    int targetY,
-  ) {
-    bool canMove =
-        (targetX >= 0 &&
-        targetX < _dungeonMap.width &&
-        targetY >= 0 &&
-        targetY < _dungeonMap.height);
-
-    return ElevatedButton(
-      onPressed: canMove ? () => _moveToRoom(targetX, targetY) : null,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.all(20),
-        shape: const CircleBorder(),
-        backgroundColor: canMove ? Colors.blue : Colors.grey,
-        foregroundColor: Colors.white,
+    int targetY, {
+    required bool canMove,
+    required bool isBossDoor,
+  }) {
+    return InkWell(
+      onTap: canMove ? () => _moveToRoom(targetX, targetY) : null,
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: canMove
+              ? (isBossDoor ? Colors.orangeAccent : Colors.blueAccent)
+                    .withOpacity(0.8)
+              : Colors.grey.withOpacity(0.3),
+          shape: BoxShape.circle,
+          boxShadow: canMove
+              ? [
+                  BoxShadow(
+                    color: isBossDoor ? Colors.redAccent : Colors.blue,
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
+          border: isBossDoor
+              ? Border.all(color: Colors.yellow, width: 2)
+              : null,
+        ),
+        child: Icon(
+          icon,
+          size: 35,
+          color: canMove ? Colors.white : Colors.white24,
+        ),
       ),
-      child: Icon(icon, size: 30),
     );
+  }
+
+  // 보스방 방향인지 확인하는 헬퍼
+  bool _isDirectionBoss(int tx, int ty) {
+    if (tx < 0 || tx >= _dungeonMap.width || ty < 0 || ty >= _dungeonMap.height)
+      return false;
+    return _dungeonMap.grid[ty][tx].type == RoomType.boss;
   }
 
   // 이동 버튼 UI를 구성하는 위젯
   Widget _buildMoveButtons() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Stack(
       children: [
-        _buildMoveButton(
-          "Up",
-          Icons.arrow_upward,
-          _dungeonMap.currentX,
-          _dungeonMap.currentY - 1,
+        // 상단 버튼
+        Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: _buildMoveButton(
+              "Up",
+              Icons.keyboard_arrow_up,
+              _dungeonMap.currentX,
+              _dungeonMap.currentY - 1,
+              isBossDoor: _isDirectionBoss(
+                _dungeonMap.currentX,
+                _dungeonMap.currentY - 1,
+              ),
+              canMove: _dungeonMap.canMoveTo(
+                _dungeonMap.currentX,
+                _dungeonMap.currentY - 1,
+              ),
+            ),
+          ),
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildMoveButton(
+        // 하단 버튼
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: _buildMoveButton(
+              "Down",
+              Icons.keyboard_arrow_down,
+              _dungeonMap.currentX,
+              _dungeonMap.currentY + 1,
+              isBossDoor: _isDirectionBoss(
+                _dungeonMap.currentX,
+                _dungeonMap.currentY + 1,
+              ),
+              canMove: _dungeonMap.canMoveTo(
+                _dungeonMap.currentX,
+                _dungeonMap.currentY + 1,
+              ),
+            ),
+          ),
+        ),
+        // 좌측 버튼
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: _buildMoveButton(
               "Left",
-              Icons.arrow_back,
+              Icons.keyboard_arrow_left,
               _dungeonMap.currentX - 1,
               _dungeonMap.currentY,
+              isBossDoor: _isDirectionBoss(
+                _dungeonMap.currentX - 1,
+                _dungeonMap.currentY,
+              ),
+              canMove: _dungeonMap.canMoveTo(
+                _dungeonMap.currentX - 1,
+                _dungeonMap.currentY,
+              ),
             ),
-            const SizedBox(width: 80), // 중앙 빈 공간
-            _buildMoveButton(
+          ),
+        ),
+        // 우측 버튼
+        Align(
+          alignment: Alignment.centerRight,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 20),
+            child: _buildMoveButton(
               "Right",
-              Icons.arrow_forward,
+              Icons.keyboard_arrow_right,
               _dungeonMap.currentX + 1,
               _dungeonMap.currentY,
+              isBossDoor: _isDirectionBoss(
+                _dungeonMap.currentX + 1,
+                _dungeonMap.currentY,
+              ),
+              canMove: _dungeonMap.canMoveTo(
+                _dungeonMap.currentX + 1,
+                _dungeonMap.currentY,
+              ),
             ),
-          ],
-        ),
-        _buildMoveButton(
-          "Down",
-          Icons.arrow_downward,
-          _dungeonMap.currentX,
-          _dungeonMap.currentY + 1,
+          ),
         ),
       ],
     );
@@ -1394,6 +1726,24 @@ class _SudokuScreenState extends State<SudokuScreen>
       focusNode: FocusNode()..requestFocus(),
       onKeyEvent: (event) {
         if (event is KeyDownEvent && !_isPaused) {
+          // Dungeon movement only when _showMoveButtons is true
+          if (_showMoveButtons) {
+            switch (event.logicalKey) {
+              case LogicalKeyboardKey.arrowUp:
+                _moveToRoom(_dungeonMap.currentX, _dungeonMap.currentY - 1);
+                break;
+              case LogicalKeyboardKey.arrowDown:
+                _moveToRoom(_dungeonMap.currentX, _dungeonMap.currentY + 1);
+                break;
+              case LogicalKeyboardKey.arrowLeft:
+                _moveToRoom(_dungeonMap.currentX - 1, _dungeonMap.currentY);
+                break;
+              case LogicalKeyboardKey.arrowRight:
+                _moveToRoom(_dungeonMap.currentX + 1, _dungeonMap.currentY);
+                break;
+            }
+          }
+          // Sudoku input logic (existing)
           final label = event.logicalKey.keyLabel;
           if (RegExp(r'^[1-9]$').hasMatch(label)) {
             _handleNumberInput(int.parse(label));
@@ -1407,7 +1757,6 @@ class _SudokuScreenState extends State<SudokuScreen>
         }
       },
       child: Column(
-        // KeyboardListener의 child는 Column
         children: [
           GameStatus(
             difficulty:
@@ -1426,6 +1775,25 @@ class _SudokuScreenState extends State<SudokuScreen>
             undoCount: _undoUses,
             maxUndoCount: _maxUndoUses,
           ),
+          PurificationGauge(progress: _dungeonMap.purificationRate),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                icon: const Icon(
+                  Icons.settings,
+                  size: 18,
+                  color: Colors.white70,
+                ),
+                label: const Text(
+                  "설정",
+                  style: TextStyle(color: Colors.white70),
+                ),
+                onPressed: _showSettingsDialog,
+              ),
+              const SizedBox(width: 10),
+            ],
+          ),
           const Divider(),
 
           Expanded(
@@ -1441,13 +1809,51 @@ class _SudokuScreenState extends State<SudokuScreen>
                             key: _gridKey,
                             board: _getCurrentSudokuBoard(),
                             onCellTap: _onCellTapped,
+                            onCellLongPress: _handleCellLongPress,
                             selectedRow: _selectedRow,
                             selectedCol: _selectedCol,
                             errorMap: _getCurrentSudokuBoard().errorMap,
                             isSuccess: _isSuccessAnimation,
                             flashingRow: _flashingRow,
                             flashingCol: _flashingCol,
+                            conflicts: _currentConflicts,
+                            errorRow: _errorRow,
+                            errorCol: _errorCol,
+                            conflictAnimationValue: _conflictAnimationValue,
                           ),
+                          // 에러 툴팁 메시지
+                          if (_errorExplanation != null)
+                            Positioned(
+                              bottom: 20,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent.withOpacity(0.9),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    _errorExplanation!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           // 클리어된 방일 경우 메시지 오버레이
                           if (_dungeonMap.currentRoom.isCleared)
                             Positioned.fill(
@@ -1479,16 +1885,50 @@ class _SudokuScreenState extends State<SudokuScreen>
                             ),
                         ],
                       )
-                    : SudokuGrid(
-                        key: _gridKey,
-                        board: _getCurrentSudokuBoard(),
-                        onCellTap: _onCellTapped,
-                        selectedRow: _selectedRow,
-                        selectedCol: _selectedCol,
-                        errorMap: _getCurrentSudokuBoard().errorMap,
-                        isSuccess: _isSuccessAnimation,
-                        flashingRow: _flashingRow,
-                        flashingCol: _flashingCol,
+                    : Stack(
+                        children: [
+                          SudokuGrid(
+                            key: _gridKey,
+                            board: _getCurrentSudokuBoard(),
+                            onCellTap: _onCellTapped,
+                            onCellLongPress: _handleCellLongPress,
+                            selectedRow: _selectedRow,
+                            selectedCol: _selectedCol,
+                            errorMap: _getCurrentSudokuBoard().errorMap,
+                            isSuccess: _isSuccessAnimation,
+                            flashingRow: _flashingRow,
+                            flashingCol: _flashingCol,
+                            conflicts: _currentConflicts,
+                            errorRow: _errorRow,
+                            errorCol: _errorCol,
+                            conflictAnimationValue: _conflictAnimationValue,
+                          ),
+                          if (_errorExplanation != null)
+                            Positioned(
+                              bottom: 20,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent.withOpacity(0.9),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    _errorExplanation!,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
               ),
             ),
@@ -1656,7 +2096,68 @@ class _SudokuScreenState extends State<SudokuScreen>
           ..._projectiles,
           // 플로팅 데미지 레이어
           ..._damageEffects,
+          // 던전 클리어 레이어
+          if (_isDungeonCleared) _buildDungeonClearOverlay(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDungeonClearOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.9),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.auto_awesome, color: Colors.amber, size: 100),
+              const SizedBox(height: 30),
+              const Text(
+                "DUNGEON CLEAR",
+                style: TextStyle(
+                  fontSize: 50,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 4,
+                  shadows: [
+                    Shadow(
+                      color: Colors.amber,
+                      blurRadius: 20,
+                      offset: Offset(0, 0),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "모든 어둠이 정화되었습니다.",
+                style: TextStyle(fontSize: 20, color: Colors.blueGrey),
+              ),
+              const SizedBox(height: 50),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isDungeonCleared = false;
+                  });
+                  _createNewGame(); // 새 게임으로 복구 또는 메인으로 (여기선 편의상 새 게임)
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 15,
+                  ),
+                ),
+                child: const Text(
+                  "전장 떠나기",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

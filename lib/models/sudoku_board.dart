@@ -139,7 +139,13 @@ class SudokuBoard {
 
   // --- Game Logic ---
 
-  void setNumber(int row, int col, int number, {bool isMemoMode = false}) {
+  void setNumber(
+    int row,
+    int col,
+    int number, {
+    bool isMemoMode = false,
+    bool autoEraserEnabled = true,
+  }) {
     if (initialGrid[row][col] != 0) return;
 
     // The undoStack logic is removed from here.
@@ -166,8 +172,10 @@ class SudokuBoard {
             score += 10;
             scoreAwarded[row][col] = true;
           }
-          // 정답을 입력했을 때 주변 관련 칸의 메모를 지웁니다.
-          _clearNotesInScope(row, col, number);
+          // 정답을 입력했을 때 주변 관련 칸의 메모를 지웁니다. (설정된 경우에만)
+          if (autoEraserEnabled) {
+            _clearNotesInScope(row, col, number);
+          }
         }
       } else {
         errorMap[row][col] = false;
@@ -190,6 +198,17 @@ class SudokuBoard {
     for (int r = startRow; r < startRow + 3; r++) {
       for (int c = startCol; c < startCol + 3; c++) {
         notes[r][c].remove(number);
+      }
+    }
+  }
+
+  void fillPossibleNotes(int row, int col) {
+    if (initialGrid[row][col] != 0 || currentGrid[row][col] != 0) return;
+
+    notes[row][col].clear();
+    for (int num = 1; num <= 9; num++) {
+      if (_isValid(currentGrid, row, col, num)) {
+        notes[row][col].add(num);
       }
     }
   }
@@ -226,5 +245,43 @@ class SudokuBoard {
       }
     }
     return count;
+  }
+
+  // 특정 위치에 숫자를 넣었을 때 충돌하는 칸들을 반환 (레이저 효과용)
+  List<Map<String, int>> getConflicts(int row, int col, int number) {
+    if (number == 0) return [];
+    List<Map<String, int>> conflicts = [];
+
+    // 1. 같은 행 체크
+    for (int c = 0; c < 9; c++) {
+      if (c != col && currentGrid[row][c] == number) {
+        conflicts.add({'row': row, 'col': c});
+      }
+    }
+
+    // 2. 같은 열 체크
+    for (int r = 0; r < 9; r++) {
+      if (r != row && currentGrid[r][col] == number) {
+        conflicts.add({'row': r, 'col': col});
+      }
+    }
+
+    // 3. 같은 3x3 박스 체크
+    int startRow = (row ~/ 3) * 3;
+    int startCol = (col ~/ 3) * 3;
+    for (int r = startRow; r < startRow + 3; r++) {
+      for (int c = startCol; c < startCol + 3; c++) {
+        if ((r != row || c != col) && currentGrid[r][c] == number) {
+          // 이미 행/열에서 추가된 경우 중복 방지
+          if (!conflicts.any(
+            (conflict) => conflict['row'] == r && conflict['col'] == c,
+          )) {
+            conflicts.add({'row': r, 'col': c});
+          }
+        }
+      }
+    }
+
+    return conflicts;
   }
 }
