@@ -43,7 +43,7 @@ class _ParticleEffectState extends State<_ParticleEffect>
           angle: _random.nextDouble() * 2 * pi,
           distance: 20.0 + _random.nextDouble() * 30.0,
           size: 4.0 + _random.nextDouble() * 4.0,
-          color: Colors.amberAccent.withOpacity(0.8),
+          color: Colors.amberAccent.withValues(alpha: 0.8),
         ),
       );
     }

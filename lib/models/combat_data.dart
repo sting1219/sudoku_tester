@@ -8,7 +8,6 @@ class Monster {
   final int attackPower; // Damage monster deals to player on player error
   final int rewardGold;
   final int rewardXp;
-  // TODO: Add special abilities (e.g., board obfuscation) later
 
   Monster({
     required this.name,
@@ -60,16 +59,13 @@ class PlayerCombatStats {
   PlayerCombatStats({
     this.maxHp = 100, // Default player HP
     int? currentHp,
-    this.attackPower = 100, // Default player attack power (multiplier for number entered)
+    this.attackPower =
+        100, // Default player attack power (multiplier for number entered)
   }) : currentHp = currentHp ?? maxHp;
 
   bool isDefeated() => currentHp <= 0;
 
-  PlayerCombatStats copyWith({
-    int? currentHp,
-    int? maxHp,
-    int? attackPower,
-  }) {
+  PlayerCombatStats copyWith({int? currentHp, int? maxHp, int? attackPower}) {
     return PlayerCombatStats(
       maxHp: maxHp ?? this.maxHp,
       currentHp: currentHp ?? this.currentHp,
@@ -121,8 +117,6 @@ class MonsterTemplates {
         return sudokuDragon();
       case RoomType.shop: // 상점 등 전투가 없는 방
         return Monster.empty();
-      default:
-        return numberSlime(); // 기본 몬스터
     }
   }
 }

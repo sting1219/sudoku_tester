@@ -21,12 +21,12 @@ class ConflictPainter extends CustomPainter {
     final cellHeight = size.height / 9;
 
     final paint = Paint()
-      ..color = Colors.redAccent.withOpacity(0.6 * (1.0 - animationValue))
+      ..color = Colors.redAccent.withValues(alpha: 0.6 * (1.0 - animationValue))
       ..strokeWidth = 3.0
       ..strokeCap = StrokeCap.round;
 
     final glowPaint = Paint()
-      ..color = Colors.redAccent.withOpacity(0.3 * (1.0 - animationValue))
+      ..color = Colors.redAccent.withValues(alpha: 0.3 * (1.0 - animationValue))
       ..strokeWidth = 8.0
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_styles.dart';
 
 class GameStatus extends StatelessWidget {
   final String difficulty;
@@ -17,7 +18,6 @@ class GameStatus extends StatelessWidget {
   final int hintsRemaining; // 힌트 횟수
   final int undoCount; // 실행 취소 횟수
   final int maxUndoCount; // 최대 실행 취소 횟수
-
 
   const GameStatus({
     super.key,
@@ -39,21 +39,46 @@ class GameStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double xpPercentage = (playerTotalXpNeeded == 0) ? 0 : playerCurrentXp / playerTotalXpNeeded;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
       child: Column(
         children: [
           Row(
             children: [
-              Text("Lv.$playerLevel", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(
+                "Lv.$playerLevel",
+                style: AppStyles.bodyLarge.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(width: 8),
-              Text("$playerGold G", style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(
+                "$playerGold G",
+                style: AppStyles.bodyLarge.copyWith(
+                  color: AppColors.hintColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _buildCompactBar("HP", playerCurrentHp, playerMaxHp, Colors.red)),
+              Expanded(
+                child: _buildCompactBar(
+                  "HP",
+                  playerCurrentHp,
+                  playerMaxHp,
+                  AppColors.dangerColor,
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _buildCompactBar("XP", playerCurrentXp, playerTotalXpNeeded, Colors.green)),
+              Expanded(
+                child: _buildCompactBar(
+                  "XP",
+                  playerCurrentXp,
+                  playerTotalXpNeeded,
+                  AppColors.successColor,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -67,7 +92,11 @@ class GameStatus extends StatelessWidget {
               _buildSmallInfo("실행취소", "$undoCount/$maxUndoCount"),
               GestureDetector(
                 onTap: onPauseTap,
-                child: const Icon(Icons.pause_circle_filled, color: Colors.blue, size: 24),
+                child: const Icon(
+                  Icons.pause_circle_filled,
+                  color: Colors.blue,
+                  size: 24,
+                ),
               ),
             ],
           ),
@@ -84,8 +113,14 @@ class GameStatus extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-            Text("$current/$total", style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+            Text(
+              "$current/$total",
+              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         const SizedBox(height: 2),
@@ -106,76 +141,14 @@ class GameStatus extends StatelessWidget {
     return Column(
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 9)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        Text(
+          value,
+          style: AppStyles.bodyLarge.copyWith(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
       ],
-    );
-  }
-
-  // Helper for game info
-  Widget _buildInfoItem(String label, String value) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-      ],
-    );
-  }
-
-  // Helper for player stats
-  Widget _buildPlayerStatItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 10),
-      child: Column(
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        ],
-      ),
-    );
-  }
-
-  // New helper for Player HP
-  Widget _buildPlayerHpItem(int currentHp, int maxHp) {
-    double hpPercentage = (maxHp == 0) ? 0 : currentHp / maxHp;
-    if (hpPercentage < 0) hpPercentage = 0;
-
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("HP", style: TextStyle(color: Colors.grey, fontSize: 12)),
-          LinearProgressIndicator(
-            value: hpPercentage,
-            backgroundColor: Colors.grey[300],
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.red),
-          ),
-          Text(
-            "$currentHp/$maxHp",
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // New helper for Player XP
-  Widget _buildPlayerXpItem(double xpPercentage, int currentXp, int totalXpNeeded) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("XP", style: TextStyle(color: Colors.grey, fontSize: 12)),
-          LinearProgressIndicator(
-            value: xpPercentage,
-            backgroundColor: Colors.grey[300],
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
-          ),
-          Text(
-            "$currentXp/$totalXpNeeded",
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          ),
-        ],
-      ),
     );
   }
 }

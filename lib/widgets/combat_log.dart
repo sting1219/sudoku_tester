@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
+import '../utils/app_styles.dart';
 
 class CombatLog extends StatefulWidget {
   final List<String> logMessages;
 
-  const CombatLog({
-    super.key,
-    required this.logMessages,
-  });
+  const CombatLog({super.key, required this.logMessages});
 
   @override
   State<CombatLog> createState() => _CombatLogState();
@@ -43,9 +41,9 @@ class _CombatLogState extends State<CombatLog> {
       padding: const EdgeInsets.all(8.0),
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[700]!),
+        border: Border.all(color: Colors.white12),
       ),
       child: ListView.builder(
         controller: _scrollController,
@@ -53,10 +51,7 @@ class _CombatLogState extends State<CombatLog> {
         itemBuilder: (context, index) {
           return Text(
             widget.logMessages[index],
-            style: TextStyle(
-              color: Colors.white.withAlpha((255 * 0.8).round()),
-              fontSize: 12,
-            ),
+            style: AppStyles.battleLogText.copyWith(color: AppColors.textBody),
           );
         },
       ),

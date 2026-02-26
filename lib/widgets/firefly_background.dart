@@ -83,7 +83,7 @@ class _FireflyPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFFFD700).withOpacity(0.3)
+      ..color = const Color(0xFFFFD700).withValues(alpha: 0.3)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
 
     for (var firefly in fireflies) {
@@ -100,7 +100,7 @@ class _FireflyPainter extends CustomPainter {
 
       // 더 밝은 중심점
       final centerPaint = Paint()
-        ..color = const Color(0xFFFFD700).withOpacity(0.6);
+        ..color = const Color(0xFFFFD700).withValues(alpha: 0.6);
       canvas.drawCircle(Offset(dx, dy), firefly.size * 0.5, centerPaint);
     }
   }

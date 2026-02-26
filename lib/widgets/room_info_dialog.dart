@@ -20,7 +20,7 @@ class RoomInfoDialog extends StatelessWidget {
           border: Border.all(color: const Color(0xFF3D522B), width: 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -56,7 +56,7 @@ class RoomInfoDialog extends StatelessWidget {
                 border: Border.all(color: const Color(0xFF00E5FF), width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF00E5FF).withOpacity(0.2),
+                    color: const Color(0xFF00E5FF).withValues(alpha: 0.2),
                     blurRadius: 10,
                   ),
                 ],

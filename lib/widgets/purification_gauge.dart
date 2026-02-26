@@ -16,7 +16,9 @@ class PurificationGauge extends StatelessWidget {
         color: Colors.black26,
         border: Border(
           bottom: BorderSide(
-            color: isComplete ? Colors.amber.withOpacity(0.3) : Colors.white10,
+            color: isComplete
+                ? Colors.amber.withValues(alpha: 0.3)
+                : Colors.white10,
             width: 1,
           ),
         ),
@@ -72,7 +74,7 @@ class PurificationGauge extends StatelessWidget {
                     boxShadow: [
                       BoxShadow(
                         color: (isComplete ? Colors.amber : Colors.cyanAccent)
-                            .withOpacity(0.5),
+                            .withValues(alpha: 0.5),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),

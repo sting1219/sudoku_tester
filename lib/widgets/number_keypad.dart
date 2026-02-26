@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/sudoku_board.dart';
+import '../utils/app_styles.dart';
 
 class NumberKeypad extends StatelessWidget {
   // ⭐️ void Function(int) 뒤에 ?를 붙여 null을 허용합니다.
-  final void Function(int)? onNumberTap; 
+  final void Function(int)? onNumberTap;
   final VoidCallback? onDeleteTap;
   final SudokuBoard board;
 
@@ -15,7 +16,8 @@ class NumberKeypad extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {    return Column(
+  Widget build(BuildContext context) {
+    return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -34,15 +36,14 @@ class NumberKeypad extends StatelessWidget {
   }
 
   Widget _buildNumberButton(int number) {
-
     // ⭐️ 핵심 로직: 숫자가 9개 이상이면 비활성화
     final int count = board.getCountOfNumber(number);
     final bool isCompleted = count >= 9;
-    
+
     // 이미 9개 채워졌거나, 외부에서 비활성화(null)가 들어왔다면 작동 안함
     final bool isActuallyEnabled = onNumberTap != null && !isCompleted;
 
-   return Padding(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: InkWell(
         onTap: isActuallyEnabled ? () => onNumberTap!(number) : null,
@@ -52,9 +53,15 @@ class NumberKeypad extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: isCompleted ? const Color(0xFF1E293B) : const Color(0xFF334155),
+              color: isCompleted
+                  ? AppColors.scaffoldBackground
+                  : AppColors.cardBackground,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: isActuallyEnabled ? Colors.indigoAccent.withOpacity(0.5) : Colors.transparent),
+              border: Border.all(
+                color: isActuallyEnabled
+                    ? AppColors.indigoAccent.withValues(alpha: 0.5)
+                    : Colors.transparent,
+              ),
             ),
             child: Center(
               child: Column(
@@ -62,7 +69,7 @@ class NumberKeypad extends StatelessWidget {
                 children: [
                   Text(
                     number.toString(),
-                     style: TextStyle(
+                    style: AppStyles.bodyLarge.copyWith(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: isActuallyEnabled ? Colors.white : Colors.white38,
@@ -71,8 +78,13 @@ class NumberKeypad extends StatelessWidget {
                   // 선택사항: 숫자 아래에 작게 남은 개수를 표시해줄 수도 있습니다.
                   Text(
                     "${9 - count}",
-                    style: TextStyle(fontSize: 8, color: isActuallyEnabled ? Colors.blue : Colors.transparent),
-                  )
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: isActuallyEnabled
+                          ? AppColors.accentColor
+                          : Colors.transparent,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -95,11 +107,16 @@ class NumberKeypad extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: const Color(0xFF451A1A),
+              color: AppColors.dangerColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isEnabled ? AppColors.dangerColor : Colors.transparent,
+              ),
             ),
-            child: Icon(Icons.backspace_outlined, 
-              color: isEnabled ? Colors.redAccent : Colors.white24),
+            child: Icon(
+              Icons.backspace_outlined,
+              color: isEnabled ? AppColors.dangerColor : Colors.white24,
+            ),
           ),
         ),
       ),

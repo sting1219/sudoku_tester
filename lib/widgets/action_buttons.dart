@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_styles.dart';
 
 class ActionButtons extends StatelessWidget {
   final VoidCallback? onUndo;
@@ -29,23 +30,40 @@ class ActionButtons extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildActionButton(Icons.undo, "실행 취소 ($undoCount/$maxUndoCount)", onUndo),
+          _buildActionButton(
+            Icons.undo,
+            "실행 취소 ($undoCount/$maxUndoCount)",
+            onUndo,
+          ),
           _buildActionButton(Icons.auto_fix_normal, "지우기", onDelete),
           _buildActionButton(
-            isMemoOn ? Icons.edit : Icons.edit_off, 
-            "메모", 
+            isMemoOn ? Icons.edit : Icons.edit_off,
+            "메모",
             onMemoToggle,
-            statusText: isMemoOn ? "ON" : "OFF"
+            statusText: isMemoOn ? "ON" : "OFF",
           ),
-          _buildActionButton(Icons.lightbulb_outline, "힌트", onHint, badgeCount: hintCount),
+          _buildActionButton(
+            Icons.lightbulb_outline,
+            "힌트",
+            onHint,
+            badgeCount: hintCount,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, VoidCallback? onTap, {String? statusText, int? badgeCount}) {
+  Widget _buildActionButton(
+    IconData icon,
+    String label,
+    VoidCallback? onTap, {
+    String? statusText,
+    int? badgeCount,
+  }) {
     final bool isEnabled = onTap != null;
-    final Color mainColor = isEnabled ? Colors.blueGrey[700]! : Colors.grey[300]!;
+    final Color mainColor = isEnabled
+        ? AppColors.indigoAccent
+        : Colors.grey[600]!;
 
     return InkWell(
       onTap: onTap,
@@ -66,7 +84,9 @@ class ActionButtons extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: isEnabled && statusText == "ON" ? Colors.blue : Colors.grey,
+                        color: isEnabled && statusText == "ON"
+                            ? AppColors.accentColor
+                            : Colors.grey,
                       ),
                     ),
                   ),
@@ -79,7 +99,10 @@ class ActionButtons extends StatelessWidget {
                       backgroundColor: isEnabled ? Colors.blue : Colors.grey,
                       child: Text(
                         badgeCount.toString(),
-                        style: const TextStyle(fontSize: 10, color: Colors.white),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -87,11 +110,12 @@ class ActionButtons extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             Text(
-              label, 
-              style: TextStyle(
-                fontSize: 12, 
-                color: isEnabled ? Colors.black : Colors.grey
-              )
+              label,
+              style: AppStyles.bodyLarge.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: isEnabled ? AppColors.textBody : Colors.white24,
+              ),
             ),
           ],
         ),

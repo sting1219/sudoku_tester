@@ -27,24 +27,28 @@ class MiniMap extends StatelessWidget {
                 Widget? content;
 
                 if (!isVisible) {
-                  cellColor = Colors.black.withOpacity(0.8); // 안개 (보이지 않음)
+                  cellColor = Colors.black.withValues(
+                    alpha: 0.8,
+                  ); // 안개 (보이지 않음)
                 } else {
                   if (dungeonMap.currentX == x && dungeonMap.currentY == y) {
-                    cellColor = Colors.blueAccent.withOpacity(0.7); // 현재 위치
+                    cellColor = Colors.blueAccent.withValues(
+                      alpha: 0.7,
+                    ); // 현재 위치
                     content = const Icon(
                       Icons.person,
                       size: 12,
                       color: Colors.white,
                     );
                   } else if (room.isCleared) {
-                    cellColor = Colors.green.withOpacity(0.4); // 클리어된 방
+                    cellColor = Colors.green.withValues(alpha: 0.4); // 클리어된 방
                     content = const Icon(
                       Icons.check,
                       size: 10,
                       color: Colors.white70,
                     );
                   } else {
-                    cellColor = Colors.grey.withOpacity(0.3); // 일반/탐험된 방
+                    cellColor = Colors.grey.withValues(alpha: 0.3); // 일반/탐험된 방
                     if (room.type == RoomType.boss) {
                       content = const Icon(
                         Icons.stars,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/sudoku_board.dart';
+import '../utils/app_styles.dart';
 import 'shake_widget.dart';
 import 'conflict_painter.dart';
 
@@ -72,15 +73,15 @@ class SudokuGrid extends StatelessWidget {
                               ? FontWeight.bold
                               : FontWeight.normal,
                           color: isError
-                              ? Colors.redAccent
+                              ? AppColors.dangerColor
                               : (isInitial
-                                    ? Colors.white
-                                    : const Color(0xFF00E5FF)),
+                                    ? AppColors.textHeadline
+                                    : AppColors.accentColor),
                           shadows: isInitial
                               ? [
                                   Shadow(
                                     blurRadius: 2.0,
-                                    color: Colors.black.withOpacity(0.5),
+                                    color: Colors.black.withValues(alpha: 0.5),
                                     offset: const Offset(0.5, 0.5),
                                   ),
                                 ]
@@ -113,7 +114,9 @@ class SudokuGrid extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.normal,
-                                color: Colors.blueGrey[300],
+                                color: AppColors.textBody.withValues(
+                                  alpha: 0.5,
+                                ),
                                 height: 1.0,
                               ),
                             ),
@@ -197,36 +200,32 @@ class SudokuGrid extends StatelessWidget {
                   }
                 }
                 // 4. 색상 우선순위 결정 (AlphaBlend로 '중첩' 효과 구현)
-                const Color baseColor = Color(
-                  0xFF13221C,
-                ); // Darker Garden Green
+                final Color baseColor = AppColors.scaffoldBackground;
                 Color cellColor = baseColor;
 
                 if (isError) {
                   cellColor = Color.alphaBlend(
-                    Colors.red.withOpacity(0.4),
+                    Colors.red.withValues(alpha: 0.4),
                     baseColor,
                   );
                 } else if (isFlashing) {
                   // 정답 플래시 효과: 황금색/밝은 파란색
                   cellColor = Color.alphaBlend(
-                    Colors.amber.withOpacity(0.6),
+                    Colors.amber.withValues(alpha: 0.6),
                     baseColor,
                   );
                 } else if (isSelected) {
-                  cellColor = const Color(
-                    0xFF2D5A4C,
-                  ); // Muted Emerald Selection
+                  cellColor = AppColors.cardBackground.withValues(alpha: 0.8);
                 } else if (isSameValue) {
                   // sameNumberBg: rgba(74, 144, 226, 0.3)를 base 위에 중첩
                   cellColor = Color.alphaBlend(
-                    const Color(0xFF4A90E2).withOpacity(0.2),
+                    const Color(0xFF4A90E2).withValues(alpha: 0.2),
                     baseColor,
                   );
                 } else if (isRelated) {
                   // relatedBg: rgba(255, 255, 255, 0.08)를 base 위에 중첩 (은은한 밝기)
                   cellColor = Color.alphaBlend(
-                    Colors.white.withOpacity(0.05),
+                    Colors.white.withValues(alpha: 0.05),
                     baseColor,
                   );
                 }
@@ -256,7 +255,7 @@ class SudokuGrid extends StatelessWidget {
                         boxShadow: (isSuccess || isFlashing)
                             ? [
                                 BoxShadow(
-                                  color: Colors.amber.withOpacity(0.5),
+                                  color: Colors.amber.withValues(alpha: 0.5),
                                   blurRadius: 10.0,
                                   spreadRadius: 2.0,
                                 ),
