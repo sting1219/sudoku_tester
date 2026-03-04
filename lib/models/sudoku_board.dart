@@ -41,10 +41,11 @@ class SudokuBoard {
   int score = 0;
   // undoStack is removed, will be handled by GameState history.
   Difficulty difficulty;
+  final int? seed;
 
-  SudokuBoard({this.difficulty = Difficulty.medium}) {
-    solution = _generateSolvedBoard();
-    initialGrid = _createPuzzle(solution, difficulty);
+  SudokuBoard({this.difficulty = Difficulty.medium, this.seed}) {
+    solution = _generateSolvedBoard(seed);
+    initialGrid = _createPuzzle(solution, difficulty, seed);
     currentGrid = initialGrid.map((row) => List<int>.from(row)).toList();
     scoreAwarded = List.generate(9, (_) => List.filled(9, false));
     for (int r = 0; r < 9; r++) {
@@ -58,7 +59,7 @@ class SudokuBoard {
 
   // Method to create a deep copy of the board state.
   SudokuBoard clone() {
-    final newBoard = SudokuBoard(difficulty: difficulty);
+    final newBoard = SudokuBoard(difficulty: difficulty, seed: seed);
     newBoard.initialGrid = initialGrid
         .map((row) => List<int>.from(row))
         .toList();
@@ -80,21 +81,21 @@ class SudokuBoard {
 
   // --- Board Generation Algorithms ---
 
-  static List<List<int>> _generateSolvedBoard() {
+  static List<List<int>> _generateSolvedBoard(int? seed) {
     List<List<int>> board = List.generate(9, (_) => List.filled(9, 0));
-    _fillBoard(board);
+    _fillBoard(board, Random(seed));
     return board;
   }
 
-  static bool _fillBoard(List<List<int>> board) {
+  static bool _fillBoard(List<List<int>> board, Random random) {
     for (int row = 0; row < 9; row++) {
       for (int col = 0; col < 9; col++) {
         if (board[row][col] == 0) {
-          List<int> numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]..shuffle();
+          List<int> numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]..shuffle(random);
           for (int num in numbers) {
             if (_isValid(board, row, col, num)) {
               board[row][col] = num;
-              if (_fillBoard(board)) return true;
+              if (_fillBoard(board, random)) return true;
               board[row][col] = 0;
             }
           }
@@ -108,10 +109,11 @@ class SudokuBoard {
   static List<List<int>> _createPuzzle(
     List<List<int>> solved,
     Difficulty diff,
+    int? seed,
   ) {
     List<List<int>> puzzle = solved.map((row) => List<int>.from(row)).toList();
     int cellsToRemove = diff.emptyCells;
-    Random random = Random();
+    Random random = Random(seed);
 
     while (cellsToRemove > 0) {
       int r = random.nextInt(9);
@@ -283,5 +285,11 @@ class SudokuBoard {
     }
 
     return conflicts;
+  }
+
+  // 오늘 날짜 전용 시드 생성 (데일리 도전용)
+  static int getDailySeed() {
+    final now = DateTime.now();
+    return now.year * 10000 + now.month * 100 + now.day;
   }
 }

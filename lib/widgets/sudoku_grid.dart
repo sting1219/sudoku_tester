@@ -215,17 +215,22 @@ class SudokuGrid extends StatelessWidget {
                     baseColor,
                   );
                 } else if (isSelected) {
-                  cellColor = AppColors.cardBackground.withValues(alpha: 0.8);
-                } else if (isSameValue) {
-                  // sameNumberBg: rgba(74, 144, 226, 0.3)를 base 위에 중첩
+                  // 유저가 선택한 셀 강조색
                   cellColor = Color.alphaBlend(
-                    const Color(0xFF4A90E2).withValues(alpha: 0.2),
+                    Colors.blue.withValues(alpha: 0.5),
+                    baseColor,
+                  );
+                } else if (isSameValue) {
+                  // 동일 숫자 강조 (0 제외)
+                  cellColor = Color.alphaBlend(
+                    Colors.blueAccent.withValues(alpha: 0.2),
                     baseColor,
                   );
                 } else if (isRelated) {
-                  // relatedBg: rgba(255, 255, 255, 0.08)를 base 위에 중첩 (은은한 밝기)
+                  // 가로/세로줄 강조 (박스는 제외하고 싶다면 관련 로직 수정 필요하나 현재는 행/열/박스 포함)
+                  // 사용자가 "가로줄과 세로줄 전체"라고 명시했으므로 이에 맞춰 은은하게 강조
                   cellColor = Color.alphaBlend(
-                    Colors.white.withValues(alpha: 0.05),
+                    Colors.white.withValues(alpha: 0.1),
                     baseColor,
                   );
                 }
@@ -245,10 +250,8 @@ class SudokuGrid extends StatelessWidget {
                         ? null
                         : () => onCellLongPress?.call(row, col),
                     child: AnimatedContainer(
-                      // Container를 AnimatedContainer로 변경
-                      duration: Duration(
-                        milliseconds: (isSuccess || isFlashing) ? 500 : 0,
-                      ),
+                      // Container를 AnimatedContainer로 변경하여 부드러운 전환 구현
+                      duration: const Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
                       decoration: BoxDecoration(
                         color: cellColor,
@@ -261,33 +264,38 @@ class SudokuGrid extends StatelessWidget {
                                 ),
                               ]
                             : null,
-                        border: Border(
-                          // 격자 선 선명화 및 교차점 마감 정밀화
-                          top: BorderSide(
-                            width: row % 3 == 0 ? 3.0 : 0.5,
-                            color: row % 3 == 0
-                                ? const Color(0xFF3D522B)
-                                : const Color(0xFF2A3621),
-                          ),
-                          left: BorderSide(
-                            width: col % 3 == 0 ? 3.0 : 0.5,
-                            color: col % 3 == 0
-                                ? const Color(0xFF3D522B)
-                                : const Color(0xFF2A3621),
-                          ),
-                          right: BorderSide(
-                            width: col == 8 ? 3.0 : 0,
-                            color: col == 8
-                                ? const Color(0xFF3D522B)
-                                : const Color(0xFF2A3621),
-                          ),
-                          bottom: BorderSide(
-                            width: row == 8 ? 3.0 : 0,
-                            color: row == 8
-                                ? const Color(0xFF3D522B)
-                                : const Color(0xFF2A3621),
-                          ),
-                        ),
+                        border: isSelected
+                            ? Border.all(
+                                color: Colors.white,
+                                width: 3.0,
+                              ) // 선택된 셀의 두꺼운 테두리
+                            : Border(
+                                // 일반 셀의 격자 선
+                                top: BorderSide(
+                                  width: row % 3 == 0 ? 3.0 : 0.5,
+                                  color: row % 3 == 0
+                                      ? const Color(0xFF3D522B)
+                                      : const Color(0xFF2A3621),
+                                ),
+                                left: BorderSide(
+                                  width: col % 3 == 0 ? 3.0 : 0.5,
+                                  color: col % 3 == 0
+                                      ? const Color(0xFF3D522B)
+                                      : const Color(0xFF2A3621),
+                                ),
+                                right: BorderSide(
+                                  width: col == 8 ? 3.0 : 0,
+                                  color: col == 8
+                                      ? const Color(0xFF3D522B)
+                                      : const Color(0xFF2A3621),
+                                ),
+                                bottom: BorderSide(
+                                  width: row == 8 ? 3.0 : 0,
+                                  color: row == 8
+                                      ? const Color(0xFF3D522B)
+                                      : const Color(0xFF2A3621),
+                                ),
+                              ),
                       ),
                       child: Center(
                         child: isSuccess

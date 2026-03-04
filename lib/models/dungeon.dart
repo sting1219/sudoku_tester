@@ -56,8 +56,9 @@ class DungeonMap {
     this.height = 5,
     this.currentX = 0,
     this.currentY = 4,
+    int? seed,
   }) {
-    final random = Random();
+    final random = seed != null ? Random(seed) : Random();
     grid = List.generate(
       height,
       (y) => List.generate(width, (x) {
@@ -88,7 +89,10 @@ class DungeonMap {
         return RoomData(
           type: type,
           difficulty: diff,
-          board: SudokuBoard(difficulty: diff),
+          board: SudokuBoard(
+            difficulty: diff,
+            seed: seed != null ? random.nextInt(1000000) : null,
+          ),
           isExplored: (x == 0 && y == 4),
           artifactName: artName,
           artifactLore: artLore,

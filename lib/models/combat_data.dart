@@ -57,10 +57,9 @@ class PlayerCombatStats {
   final int attackPower; // Base damage player deals
 
   PlayerCombatStats({
-    this.maxHp = 100, // Default player HP
+    required this.maxHp,
     int? currentHp,
-    this.attackPower =
-        100, // Default player attack power (multiplier for number entered)
+    required this.attackPower,
   }) : currentHp = currentHp ?? maxHp;
 
   bool isDefeated() => currentHp <= 0;

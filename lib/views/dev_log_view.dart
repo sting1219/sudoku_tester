@@ -11,6 +11,22 @@ class DevLogView extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           _buildLogEntry(
+            "2026-02-26",
+            "코드 분석 최적화: 최신 표준 적용 및 품질 강화",
+            "Google의 품질 가이드라인과 최신 Flutter 버전의 사양을 반영하여 코드 전반을 현대화했습니다. "
+                "특히 'withOpacity'와 같은 레거시 API를 'withValues'로 성공적으로 전환하고, "
+                "린트(Lint) 규칙을 엄격히 적용하여 코드의 안정성과 가독성을 한 차원 높였습니다. "
+                "이는 더 쾌적한 개발 환경과 사용자 경험을 위한 기반이 될 것입니다.",
+          ),
+          _buildLogEntry(
+            "2026-02-25",
+            "아키텍처 대개편: 비즈니스 로직과 스타일의 분리",
+            "프로젝트의 확장성과 유지보수성을 극대화하기 위해 핵심 구조를 재설계했습니다. "
+                "GameController와 전용 UI 위젯들을 통해 퍼즐 처리 및 전투 로직을 독립시켰으며, "
+                "AppStyles와 Theme 설정을 통해 시각적 일관성을 확보했습니다. "
+                "또한 일시정지(Pause) 및 던전 클리어(Dungeon Clear) 등 UI 오버레이를 추가하여 사용자 흐름을 더욱 매끄럽게 다듬었습니다.",
+          ),
+          _buildLogEntry(
             "2026-02-09",
             "대규모 콘텐츠 업데이트: 지식의 보고 개방",
             "Google의 품질 가이드라인을 준수하고 사용자에게 더욱 가치 있는 정보를 제공하기 위해 콘텐츠 대개편을 단행했습니다. "
