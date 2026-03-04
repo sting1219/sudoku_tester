@@ -92,6 +92,7 @@ class _SudokuScreenState extends State<SudokuScreen>
   bool _isDungeonCleared = false; // 던전 전체 정화 상태 추가
   bool _showMoveButtons = false; // 방 클리어 후 이동 버튼 표시 여부
   bool _showPurifiedOverlay = false; // "PURIFIED!" 메시지 표시 여부
+  bool _isInitialized = false; // 초기화 완료 여부
 
   // 데일리 도전 및 콤보/이벤트 상태
   int? _dailySeed;
@@ -141,10 +142,16 @@ class _SudokuScreenState extends State<SudokuScreen>
         _userData.inventory.add(ItemTemplates.healthPotion());
       }
 
-      _playerCombatStats = PlayerCombatStats(
-        maxHp: _userData.baseMaxHp,
-        attackPower: _userData.baseAttackPower,
-      );
+      setState(() {
+        _playerCombatStats = PlayerCombatStats(
+          maxHp: (_userData.baseMaxHp * CurrencyService().collectionHpBonus)
+              .toInt(),
+          attackPower:
+              (_userData.baseAttackPower * CurrencyService().collectionAtkBonus)
+                  .toInt(),
+        );
+        _isInitialized = true;
+      });
       _createNewGame();
     });
 
@@ -1745,6 +1752,14 @@ class _SudokuScreenState extends State<SudokuScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0F172A),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.indigoAccent),
+        ),
+      );
+    }
     return Container(
       color: Colors.transparent,
       child: Stack(
