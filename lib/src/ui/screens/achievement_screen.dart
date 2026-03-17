@@ -13,10 +13,44 @@ class AchievementScreen extends StatefulWidget {
   State<AchievementScreen> createState() => _AchievementScreenState();
 }
 
-class _AchievementScreenState extends State<AchievementScreen> {
+class _AchievementScreenState extends State<AchievementScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: AchievementCategory.values.length + 1,
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  String _getCategoryName(AchievementCategory? category) {
+    if (category == null) return "전체";
+    switch (category) {
+      case AchievementCategory.combat:
+        return "전투";
+      case AchievementCategory.puzzle:
+        return "퍼즐";
+      case AchievementCategory.growth:
+        return "성장";
+      case AchievementCategory.collection:
+        return "수집";
+      case AchievementCategory.special:
+        return "특별";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final achievements = AchievementTemplates.allAchievements;
+    final allAchievements = AchievementTemplates.allAchievements;
     final unlocked = widget.userData.stats.unlockedAchievementIds;
     final claimed = widget.userData.stats.claimedAchievementIds;
 
@@ -28,31 +62,114 @@ class _AchievementScreenState extends State<AchievementScreen> {
           style: GoogleFonts.cinzel(fontWeight: FontWeight.bold),
         ),
         backgroundColor: const Color(0xFF1E293B),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: [
+            const Tab(text: "전체"),
+            ...AchievementCategory.values.map(
+              (cat) => Tab(text: _getCategoryName(cat)),
+            ),
+          ],
+        ),
       ),
       body: ListenableBuilder(
         listenable: CurrencyService(),
         builder: (context, child) {
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: achievements.length,
-            itemBuilder: (context, index) {
-              final achievement = achievements[index];
-              final isUnlocked = unlocked.contains(achievement.id);
-              final isClaimed = claimed.contains(achievement.id);
-
-              return _buildAchievementCard(achievement, isUnlocked, isClaimed);
-            },
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _AchievementList(
+                list: allAchievements,
+                unlocked: unlocked,
+                claimed: claimed,
+                onClaim: () => setState(() {}),
+              ),
+              ...AchievementCategory.values.map((cat) {
+                final filtered = allAchievements
+                    .where((a) => a.category == cat)
+                    .toList();
+                return _AchievementList(
+                  list: filtered,
+                  unlocked: unlocked,
+                  claimed: claimed,
+                  onClaim: () => setState(() {}),
+                );
+              }),
+            ],
           );
         },
       ),
     );
   }
+}
 
-  Widget _buildAchievementCard(
-    Achievement achievement,
-    bool isUnlocked,
-    bool isClaimed,
-  ) {
+class _AchievementList extends StatefulWidget {
+  final List<Achievement> list;
+  final Set<String> unlocked;
+  final Set<String> claimed;
+  final VoidCallback onClaim;
+
+  const _AchievementList({
+    required this.list,
+    required this.unlocked,
+    required this.claimed,
+    required this.onClaim,
+  });
+
+  @override
+  State<_AchievementList> createState() => _AchievementListState();
+}
+
+class _AchievementListState extends State<_AchievementList>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    if (widget.list.isEmpty) {
+      return const Center(
+        child: Text(
+          "해당 카테고리의 업적이 없습니다.",
+          style: TextStyle(color: Colors.white24),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: widget.list.length,
+      itemBuilder: (context, index) {
+        final achievement = widget.list[index];
+        final isUnlocked = widget.unlocked.contains(achievement.id);
+        final isClaimed = widget.claimed.contains(achievement.id);
+        return _AchievementCard(
+          achievement: achievement,
+          isUnlocked: isUnlocked,
+          isClaimed: isClaimed,
+          onClaim: widget.onClaim,
+        );
+      },
+    );
+  }
+}
+
+class _AchievementCard extends StatelessWidget {
+  final Achievement achievement;
+  final bool isUnlocked;
+  final bool isClaimed;
+  final VoidCallback onClaim;
+
+  const _AchievementCard({
+    required this.achievement,
+    required this.isUnlocked,
+    required this.isClaimed,
+    required this.onClaim,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       color: const Color(0xFF1E293B),
       margin: const EdgeInsets.only(bottom: 12),
@@ -125,7 +242,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
                 ],
               ),
             ),
-            _buildActionButton(achievement, isUnlocked, isClaimed),
+            _buildActionButton(context),
           ],
         ),
       ),
@@ -157,11 +274,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
     );
   }
 
-  Widget _buildActionButton(
-    Achievement achievement,
-    bool isUnlocked,
-    bool isClaimed,
-  ) {
+  Widget _buildActionButton(BuildContext context) {
     if (isClaimed) {
       return const Column(
         children: [
@@ -182,7 +295,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
         ),
         onPressed: () {
           CurrencyService().claimAchievementReward(achievement);
-          setState(() {}); // 로컬 상태 업데이트
+          onClaim();
         },
         child: const Text("받기", style: TextStyle(fontWeight: FontWeight.bold)),
       );

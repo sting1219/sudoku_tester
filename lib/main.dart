@@ -156,15 +156,21 @@ class _MainLayoutState extends State<MainLayout> {
           },
         ),
       ),
-      body: views[_currentIndex],
+      body: Column(
+        children: [
+          Expanded(
+            child: IndexedStack(index: _currentIndex, children: views),
+          ),
+          const SizedBox(height: 70), // Ad Space reserve
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
           });
-          // 탭 전환 시 최신 데이터를 다시 불러옴 (도감/인벤토리 동기화)
-          _loadData();
+          // 탭 전환 시 중복 로딩 제거 (CurrencyService를 통해 최신 전역 상태 유지)
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: const Color(0xFF1E293B),

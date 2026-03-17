@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:sudoku_game/models/sudoku_board.dart';
+import 'package:sudoku_game/models/dungeon_theme.dart';
 import '../data/lore_data.dart';
 
 // 던전의 각 방(Room)의 타입을 정의합니다.
@@ -11,6 +12,7 @@ class RoomData {
   bool isCleared;
   bool isExplored; // 탐험 여부 추가
   final Difficulty difficulty;
+  final DungeonTheme theme;
   final SudokuBoard board;
 
   // 수집 및 도감용 메타데이터
@@ -23,6 +25,7 @@ class RoomData {
     this.isCleared = false,
     this.isExplored = false,
     required this.difficulty,
+    required this.theme,
     required this.board,
     required this.artifactName,
     required this.artifactLore,
@@ -35,6 +38,7 @@ class RoomData {
       isCleared: isCleared,
       isExplored: isExplored,
       difficulty: difficulty,
+      theme: theme,
       board: board.clone(),
       artifactName: artifactName,
       artifactLore: artifactLore,
@@ -48,10 +52,12 @@ class DungeonMap {
   final int height;
   late List<List<RoomData>> grid;
 
+  final DungeonTheme theme;
   int currentX;
   int currentY;
 
   DungeonMap({
+    required this.theme,
     this.width = 5,
     this.height = 5,
     this.currentX = 0,
@@ -89,6 +95,7 @@ class DungeonMap {
         return RoomData(
           type: type,
           difficulty: diff,
+          theme: theme,
           board: SudokuBoard(
             difficulty: diff,
             seed: seed != null ? random.nextInt(1000000) : null,
@@ -154,6 +161,7 @@ class DungeonMap {
   }
 
   DungeonMap._clone({
+    required this.theme,
     required this.width,
     required this.height,
     required this.grid,
@@ -163,6 +171,7 @@ class DungeonMap {
 
   DungeonMap clone() {
     return DungeonMap._clone(
+      theme: theme,
       width: width,
       height: height,
       grid: grid

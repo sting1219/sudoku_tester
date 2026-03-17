@@ -124,145 +124,149 @@ class _MonsterStatusState extends State<MonsterStatus>
         ? (widget.monster.currentHp / widget.monster.maxHp).clamp(0.0, 1.0)
         : 0.0;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
-      margin: const EdgeInsets.symmetric(horizontal: 16.0),
-      decoration: BoxDecoration(
-        color: const Color(
-          0xFF1E293B,
-        ).withValues(alpha: 0.9), // 메인 배경과 통일감 있는 다크 컬러
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            widget.monster.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
+    return RepaintBoundary(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: const Color(
+            0xFF1E293B,
+          ).withValues(alpha: 0.9), // 메인 배경과 통일감 있는 다크 컬러
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white10, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
-          ),
-          const SizedBox(height: 8),
+          ],
+        ),
+        child: Column(
+          children: [
+            Text(
+              widget.monster.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
 
-          // 몬스터 이미지 및 셰이크/플래시 효과
-          AnimatedBuilder(
-            animation: Listenable.merge([_shakeController, _flashController]),
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(_shakeAnimation.value, 0),
-                child: Container(
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.indigoAccent.withValues(alpha: 0.3),
-                      width: 2,
+            // 몬스터 이미지 및 셰이크/플래시 효과
+            AnimatedBuilder(
+              animation: Listenable.merge([_shakeController, _flashController]),
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(_shakeAnimation.value, 0),
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.indigoAccent.withValues(alpha: 0.3),
+                        width: 2,
+                      ),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const Icon(
+                          Icons.psychology_alt,
+                          color: Colors.white70,
+                          size: 45,
+                        ),
+                        // 레드 플래시 오버레이
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _colorAnimation.value,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Stack(
-                    alignment: Alignment.center,
+                );
+              },
+            ),
+
+            const SizedBox(height: 12),
+
+            // HP 바 및 진동 효과
+            AnimatedBuilder(
+              animation: _shudderController,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, _shudderAnimation.value),
+                  child: Column(
                     children: [
-                      const Icon(
-                        Icons.psychology_alt,
-                        color: Colors.white70,
-                        size: 45,
-                      ),
-                      // 레드 플래시 오버레이
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _colorAnimation.value,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-
-          const SizedBox(height: 12),
-
-          // HP 바 및 진동 효과
-          AnimatedBuilder(
-            animation: _shudderController,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, _shudderAnimation.value),
-                child: Column(
-                  children: [
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final double barWidth = constraints.maxWidth;
-                        return Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: barWidth,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                color: Colors.red[900]?.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(7),
-                              ),
-                            ),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                width: barWidth * hpPercentage,
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final double barWidth = constraints.maxWidth;
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: barWidth,
                                 height: 14,
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.green[700]!,
-                                      Colors.green[400]!,
-                                    ],
+                                  color: Colors.red[900]?.withValues(
+                                    alpha: 0.5,
                                   ),
                                   borderRadius: BorderRadius.circular(7),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.green.withValues(
-                                        alpha: 0.4,
-                                      ),
-                                      blurRadius: 4,
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  width: barWidth * hpPercentage,
+                                  height: 14,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.green[700]!,
+                                        Colors.green[400]!,
+                                      ],
                                     ),
+                                    borderRadius: BorderRadius.circular(7),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.green.withValues(
+                                          alpha: 0.4,
+                                        ),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${widget.monster.currentHp} / ${widget.monster.maxHp}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  shadows: [
+                                    Shadow(color: Colors.black, blurRadius: 2),
                                   ],
                                 ),
                               ),
-                            ),
-                            Text(
-                              '${widget.monster.currentHp} / ${widget.monster.maxHp}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                                shadows: [
-                                  Shadow(color: Colors.black, blurRadius: 2),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/user_data.dart';
+import '../models/dungeon_theme.dart';
 
 class WorldMapScreen extends StatelessWidget {
   final UserData userData;
@@ -43,15 +44,20 @@ class WorldMapScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 20),
-                  _buildDailyChallengeButton(), // 데일리 도전 버튼 추가
+                  _buildDailyChallengeButton(),
                   const SizedBox(height: 40),
-                  _buildStageNode(context, 1, "초심자의 숲", true),
-                  _buildConnector(),
-                  _buildStageNode(context, 2, "고대인의 유적", userData.level >= 5),
-                  _buildConnector(),
-                  _buildStageNode(context, 3, "심연의 수용소", userData.level >= 10),
-                  _buildConnector(),
-                  _buildStageNode(context, 4, "용의 레어", userData.level >= 20),
+                  ...DungeonTheme.allThemes.asMap().entries.map((entry) {
+                    int idx = entry.key;
+                    DungeonTheme theme = entry.value;
+                    bool isUnlocked = userData.level >= theme.minLevel;
+                    return Column(
+                      children: [
+                        _buildStageNode(context, idx, theme, isUnlocked),
+                        if (idx < DungeonTheme.allThemes.length - 1)
+                          _buildConnector(),
+                      ],
+                    );
+                  }),
                   const SizedBox(height: 50),
                 ],
               ),
@@ -65,7 +71,7 @@ class WorldMapScreen extends StatelessWidget {
   Widget _buildStageNode(
     BuildContext context,
     int index,
-    String name,
+    DungeonTheme theme,
     bool isUnlocked,
   ) {
     return GestureDetector(
@@ -75,12 +81,12 @@ class WorldMapScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: isUnlocked ? Colors.indigoAccent : Colors.grey[800],
+              color: isUnlocked ? theme.primaryColor : Colors.grey[800],
               shape: BoxShape.circle,
               boxShadow: isUnlocked
                   ? [
                       BoxShadow(
-                        color: Colors.indigo,
+                        color: theme.primaryColor.withOpacity(0.5),
                         blurRadius: 15,
                         spreadRadius: 2,
                       ),
@@ -88,14 +94,14 @@ class WorldMapScreen extends StatelessWidget {
                   : [],
             ),
             child: Icon(
-              isUnlocked ? Icons.fort : Icons.lock,
+              isUnlocked ? theme.icon : Icons.lock,
               color: Colors.white,
               size: 40,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            name,
+            theme.name,
             style: TextStyle(
               color: isUnlocked ? Colors.white : Colors.white24,
               fontWeight: FontWeight.bold,
@@ -104,7 +110,7 @@ class WorldMapScreen extends StatelessWidget {
           ),
           if (!isUnlocked)
             Text(
-              "Lv.${index * 5} 필요",
+              "Lv.${theme.minLevel} 필요",
               style: const TextStyle(color: Colors.redAccent, fontSize: 12),
             ),
         ],

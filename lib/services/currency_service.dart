@@ -8,6 +8,7 @@ class CurrencyService extends ChangeNotifier {
   CurrencyService._internal();
 
   UserData? _userData;
+  UserData get userData => _userData ?? UserData.initial();
 
   void init(UserData userData) {
     _userData = userData;
@@ -73,5 +74,10 @@ class CurrencyService extends ChangeNotifier {
       LocalStorageService.saveUserData(_userData!);
     }
     notifyListeners();
+  }
+
+  // 외부에서 명시적으로 저장을 요청할 때 사용
+  void saveCurrentData() {
+    _saveAndNotify();
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui'; // ImageFilter 사용을 위해 추가
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,16 +10,17 @@ import '../models/user_data.dart';
 import '../models/ranking_model.dart';
 import '../models/combat_data.dart';
 import '../models/dungeon.dart';
+import '../models/dungeon_theme.dart';
 import '../models/sound_manager.dart';
 import '../data/lore_data.dart';
-import '../services/achievement_service.dart'; // 업적 서비스 임포트
-import '../services/currency_service.dart'; // 재화 서비스 임포트
+import '../services/achievement_service.dart';
+import '../services/currency_service.dart';
+import '../services/game_state_manager.dart';
 
 import '../widgets/minimap.dart';
 import '../widgets/number_keypad.dart';
 import '../widgets/game_status.dart';
 import '../widgets/action_buttons.dart';
-import '../widgets/ad_element.dart';
 import '../widgets/monster_status.dart';
 import '../widgets/combat_log.dart';
 import '../widgets/sudoku_grid.dart';
@@ -37,7 +39,7 @@ import 'inventory_screen.dart';
 
 // GameState class to hold a snapshot of the entire game state for the undo feature.
 class GameState {
-  final DungeonMap dungeonMap; // SudokuBoard 대신 DungeonMap 저장
+  final DungeonMap dungeonMap;
   final Monster currentMonster;
   final PlayerCombatStats playerCombatStats;
   final List<String> combatLogMessages;
@@ -51,8 +53,8 @@ class GameState {
     required this.currentMonster,
     required this.playerCombatStats,
     required this.combatLogMessages,
-    required this.comboCount,
     this.lastCorrectEntryTime,
+    required this.comboCount,
     required this.hintsRemaining,
     required this.undoUses,
   });
@@ -72,9 +74,12 @@ class SudokuScreen extends StatefulWidget {
 }
 
 class _SudokuScreenState extends State<SudokuScreen>
-    with TickerProviderStateMixin {
-  // SingleTickerProviderStateMixin에서 TickerProviderStateMixin으로 변경 (멀티 애니메이션 대응)
-  late DungeonMap _dungeonMap; // DungeonMap 인스턴스
+    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  final GameStateManager _gameState = GameStateManager();
+  late DungeonMap _dungeonMap;
   UserData _userData = UserData.initial();
   Monster _currentMonster = MonsterTemplates.numberSlime();
   late PlayerCombatStats _playerCombatStats;
@@ -83,18 +88,18 @@ class _SudokuScreenState extends State<SudokuScreen>
 
   Timer? _timer;
   int _secondsElapsed = 0;
+  int _currentMistakes = 0; // 이번 판의 실수 횟수 추적
   bool _isMemoMode = false;
   int _hintsRemaining = 0;
   final int _maxUndoUses = 3;
   int _undoUses = 0;
   bool _isPaused = false;
   bool _isSuccessAnimation = false;
-  bool _isDungeonCleared = false; // 던전 전체 정화 상태 추가
-  bool _showMoveButtons = false; // 방 클리어 후 이동 버튼 표시 여부
-  bool _showPurifiedOverlay = false; // "PURIFIED!" 메시지 표시 여부
-  bool _isInitialized = false; // 초기화 완료 여부
+  bool _isDungeonCleared = false;
+  bool _showMoveButtons = false;
+  bool _showPurifiedOverlay = false;
+  bool _isInitialized = false;
 
-  // 데일리 도전 및 콤보/이벤트 상태
   int? _dailySeed;
   double _comboMultiplier = 1.0;
   List<SudokuEvent> _activeEvents = [];
@@ -109,7 +114,6 @@ class _SudokuScreenState extends State<SudokuScreen>
   late AnimationController _screenShakeController;
   late Animation<Offset> _screenShakeAnimation;
 
-  // 연출용 상태 추가
   int? _flashingRow;
   int? _flashingCol;
   List<Map<String, int>> _currentConflicts = [];
@@ -119,41 +123,30 @@ class _SudokuScreenState extends State<SudokuScreen>
   String? _errorExplanation;
   Timer? _errorResetTimer;
   final List<Widget> _projectiles = [];
-  final List<Widget> _damageEffects = []; // 플로팅 데미지 효과 관리 리스트
+  final List<Widget> _damageEffects = [];
   final GlobalKey _monsterKey = GlobalKey();
   final GlobalKey _gridKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
-    if (widget.isDailyChallenge) {
-      _dailySeed = SudokuBoard.getDailySeed();
+    if (!_gameState.isInitialized) {
+      if (widget.isDailyChallenge) {
+        _dailySeed = SudokuBoard.getDailySeed();
+      }
+      _gameState.initializeGame(_userData, seed: _dailySeed);
     }
-    _dungeonMap = DungeonMap(seed: _dailySeed); // 던전 맵 초기화 (시드 적용)
-    _currentMonster = MonsterTemplates.getMonsterForRoom(
-      _dungeonMap.currentRoom.type,
-    ); // 초기 몬스터 설정
-    _loadUserData().then((_) {
-      // 데모를 위해 기본 스킬 하나 추가 (만약 없다면)
-      if (_userData.unlockedSkillIds.isEmpty) {
-        _userData.unlockedSkillIds.add('lucky_seven');
-      }
-      // 데모를 위해 포션 하나 추가 (만약 없다면)
-      if (_userData.inventory.isEmpty) {
-        _userData.inventory.add(ItemTemplates.healthPotion());
-      }
+    _syncWithGameState();
 
-      setState(() {
-        _playerCombatStats = PlayerCombatStats(
-          maxHp: (_userData.baseMaxHp * CurrencyService().collectionHpBonus)
-              .toInt(),
-          attackPower:
-              (_userData.baseAttackPower * CurrencyService().collectionAtkBonus)
-                  .toInt(),
-        );
-        _isInitialized = true;
-      });
-      _createNewGame();
+    setState(() {
+      _userData = CurrencyService().userData;
+      if (!_gameState.isInitialized) {
+        _gameState.initializeGame(_userData, seed: _dailySeed);
+      }
+      _syncWithGameState();
+      _isInitialized = true;
     });
+    _createNewGame();
 
     _comboAnimationController = AnimationController(
       vsync: this,
@@ -172,22 +165,26 @@ class _SudokuScreenState extends State<SudokuScreen>
     );
     _screenShakeAnimation =
         Tween<Offset>(begin: Offset.zero, end: const Offset(0.02, 0)).animate(
-            CurvedAnimation(
-              parent: _screenShakeController,
-              curve: Curves.elasticOut,
-            ),
-          )
-          ..addListener(() {
-            setState(() {});
-          })
-          ..addStatusListener((status) {
-            if (status == AnimationStatus.completed) {
-              _screenShakeController.reverse();
-            }
-          });
+          CurvedAnimation(
+            parent: _screenShakeController,
+            curve: Curves.elasticOut,
+          ),
+        );
 
     if (widget.isGameStarted) {
       _startTimer();
+    }
+  }
+
+  void _syncWithGameState() {
+    if (_gameState.isInitialized) {
+      _dungeonMap = _gameState.dungeonMap!;
+      _currentMonster = _gameState.currentMonster!;
+      _playerCombatStats = _gameState.playerCombatStats!;
+      _combatLogMessages.clear();
+      _combatLogMessages.addAll(_gameState.combatLogMessages);
+      _secondsElapsed = _gameState.secondsElapsed;
+      _comboCount = _gameState.comboCount;
     }
   }
 
@@ -224,16 +221,9 @@ class _SudokuScreenState extends State<SudokuScreen>
     return (correctCount / remainingToFill).clamp(0.0, 1.0);
   }
 
-  Future<void> _loadUserData() async {
-    final UserData loadedData = await LocalStorageService.loadUserData();
-    setState(() {
-      _userData = loadedData;
-    });
-    CurrencyService().init(_userData); // 재화 서비스 초기화
-  }
-
-  Future<void> _saveUserData() async {
-    await LocalStorageService.saveUserData(_userData);
+  // 전역 데이터 동기화 (CurrencyService를 통해 저장 및 모든 리스너 알림)
+  Future<void> _saveGlobalData() async {
+    CurrencyService().saveCurrentData();
   }
 
   void _addCombatLog(String message) {
@@ -291,7 +281,13 @@ class _SudokuScreenState extends State<SudokuScreen>
   void _createNewGame() {
     _timer?.cancel();
     setState(() {
-      _dungeonMap = DungeonMap(seed: _dailySeed); // 새로운 던전 맵 생성 (시드 유지)
+      _currentMistakes = 0; // 실수 횟수 초기화
+      // GameStateManager에 이미 초기화된 지도가 있다면 그것을 사용하고, 없다면 기본 테마로 생성
+      final currentTheme =
+          _gameState.dungeonMap?.theme ?? DungeonTheme.allThemes.first;
+
+      _dungeonMap = DungeonMap(theme: currentTheme, seed: _dailySeed);
+
       _secondsElapsed = 0;
       _isPaused = false;
       _selectedRow = null;
@@ -300,9 +296,14 @@ class _SudokuScreenState extends State<SudokuScreen>
       _undoUses = 0;
       _isSuccessAnimation = false;
       _showMoveButtons = false;
-      _currentMonster = MonsterTemplates.getMonsterForRoom(
+
+      // 테마 기반 몬스터 생성
+      _currentMonster = MonsterTemplates.getMonsterForTheme(
         _dungeonMap.currentRoom.type,
+        currentTheme.name,
+        _userData.level,
       );
+
       _playerCombatStats = PlayerCombatStats(
         maxHp: (_userData.baseMaxHp * CurrencyService().collectionHpBonus)
             .toInt(),
@@ -319,15 +320,22 @@ class _SudokuScreenState extends State<SudokuScreen>
       if (_currentMonster.name != "없음") {
         _userData.stats.discoveredMonsterNames.add(_currentMonster.name);
       }
+
+      // 매니저 상태와 동기화
+      _gameState.setDungeonMap(_dungeonMap);
+      _gameState.updateMonster(_currentMonster);
+      _gameState.updatePlayerStats(_playerCombatStats);
     });
     _startTimer();
   }
 
   void _startTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isPaused) {
+      if (!_isPaused && mounted) {
+        _gameState.updateSeconds(); // 매니저 데이터 업데이트
         setState(() {
-          _secondsElapsed++;
+          _secondsElapsed = _gameState.secondsElapsed;
         });
       }
     });
@@ -530,6 +538,7 @@ class _SudokuScreenState extends State<SudokuScreen>
         _lastCorrectEntryTime = null;
 
         _triggerErrorEffects(currentRow, currentCol, number);
+        _currentMistakes++; // 실수 횟수 증가
 
         final int damageTaken = _currentMonster.attackPower;
         _playerCombatStats = _playerCombatStats.copyWith(
@@ -557,6 +566,11 @@ class _SudokuScreenState extends State<SudokuScreen>
         _lastCorrectEntryTime = null;
         _addCombatLog("숫자를 지웠습니다.");
       }
+
+      // 콤보 및 상태 동기화
+      _gameState.updateCombo(_comboCount);
+      _gameState.updatePlayerStats(_playerCombatStats);
+      _gameState.updateMonster(_currentMonster);
 
       // 레벨업 체크
       if (_userData.canLevelUp) {
@@ -618,15 +632,16 @@ class _SudokuScreenState extends State<SudokuScreen>
     return ElevatedButton(
       style: ElevatedButton.styleFrom(backgroundColor: Colors.indigoAccent),
       onPressed: onTap,
-      child: Column(
-        children: [
-          Icon(icon, size: 24, color: Colors.white),
-          const SizedBox(height: 5),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.white),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(label, style: const TextStyle(color: Colors.white)),
+          ],
+        ),
       ),
     );
   }
@@ -638,8 +653,9 @@ class _SudokuScreenState extends State<SudokuScreen>
         maxHp: _userData.baseMaxHp,
         attackPower: _userData.baseAttackPower,
       );
+      _gameState.updatePlayerStats(_playerCombatStats);
     });
-    _saveUserData();
+    _saveGlobalData();
     Navigator.pop(context);
     if (_userData.canLevelUp) {
       _showLevelUpDialog(); // 연속 레벨업 처리
@@ -687,7 +703,7 @@ class _SudokuScreenState extends State<SudokuScreen>
                         _userData.settings.autoEraserEnabled = value;
                       });
                       setDialogState(() {});
-                      _saveUserData();
+                      _saveGlobalData();
                     },
                   ),
                 ],
@@ -810,12 +826,45 @@ class _SudokuScreenState extends State<SudokuScreen>
   }
 
   void _createProjectile(int row, int col, int damageDealt) {
+    void onHitLogic() {
+      if (!mounted) return;
+      setState(() {
+        _currentMonster = _currentMonster.copyWith(
+          currentHp: (_currentMonster.currentHp - damageDealt).clamp(
+            0,
+            _currentMonster.maxHp,
+          ),
+        );
+        _addCombatLog("${_currentMonster.name}에게 ${damageDealt}의 타격!");
+
+        _screenShakeController.forward(from: 0.0);
+        SoundManager.instance.playHitSound();
+
+        if (_currentMonster.isDefeated()) {
+          _addCombatLog("${_currentMonster.name}을(를) 처치했습니다!");
+          _applyMonsterDefeatRewards();
+
+          if (!_getCurrentSudokuBoard().isSolved()) {
+            _loadNextMonster();
+          }
+        }
+
+        if (!_isMemoMode && _getCurrentSudokuBoard().isSolved()) {
+          _timer?.cancel();
+          _triggerSuccessSequence();
+        }
+      });
+    }
+
     final RenderBox? monsterBox =
         _monsterKey.currentContext?.findRenderObject() as RenderBox?;
     final RenderBox? gridBox =
         _gridKey.currentContext?.findRenderObject() as RenderBox?;
 
-    if (monsterBox == null || gridBox == null || !mounted) return;
+    if (monsterBox == null || gridBox == null || !mounted) {
+      onHitLogic();
+      return;
+    }
 
     final monsterPos = monsterBox.localToGlobal(
       Offset(monsterBox.size.width / 2, monsterBox.size.height / 2),
@@ -837,33 +886,9 @@ class _SudokuScreenState extends State<SudokuScreen>
         if (!mounted) return;
         setState(() {
           _projectiles.remove(projectile);
-
-          _currentMonster = _currentMonster.copyWith(
-            currentHp: (_currentMonster.currentHp - damageDealt).clamp(
-              0,
-              _currentMonster.maxHp,
-            ),
-          );
-          _addCombatLog("${_currentMonster.name}에게 ${damageDealt}의 타격!");
-
           _createFloatingDamage(monsterPos, damageDealt);
-          _screenShakeController.forward(from: 0.0);
-          SoundManager.instance.playHitSound();
-
-          if (_currentMonster.isDefeated()) {
-            _addCombatLog("${_currentMonster.name}을(를) 처치했습니다!");
-            _applyMonsterDefeatRewards();
-
-            if (!_getCurrentSudokuBoard().isSolved()) {
-              _loadNextMonster();
-            }
-          }
-
-          if (!_isMemoMode && _getCurrentSudokuBoard().isSolved()) {
-            _timer?.cancel();
-            _triggerSuccessSequence();
-          }
         });
+        onHitLogic();
       },
     );
 
@@ -913,25 +938,32 @@ class _SudokuScreenState extends State<SudokuScreen>
       );
     }
 
-    // 업적 체크
-    _userData.stats = _userData.stats.copyWith(
-      totalGamesWon: _userData.stats.totalGamesWon + 1,
-    );
+    // 업적 체크 (대량 확장된 업적 시스템 연동)
     AchievementService().checkAchievements(_userData);
+    AchievementService().checkGameEndAchievements(
+      _userData,
+      seconds: _secondsElapsed,
+      mistakes: _currentMistakes,
+      combo: _comboCount,
+    );
 
     // 데일리 챌린지 성공 업적 (간단 구현)
     if (widget.isDailyChallenge) {
       AchievementService().checkDailyAchievement(_userData);
     }
 
-    await _saveUserData();
+    await _saveGlobalData();
   }
 
   void _loadNextMonster() {
     setState(() {
-      _currentMonster = MonsterTemplates.getMonsterForRoom(
+      var nextMonster = MonsterTemplates.getMonsterForRoom(
         _dungeonMap.currentRoom.type,
       );
+      if (nextMonster.name == "없음" || nextMonster.maxHp <= 0) {
+        nextMonster = MonsterTemplates.numberSlime();
+      }
+      _currentMonster = nextMonster;
       _addCombatLog("야생의 ${_currentMonster.name}이(가) 나타났다!");
     });
   }
@@ -1014,7 +1046,7 @@ class _SudokuScreenState extends State<SudokuScreen>
           }
         }
 
-        _saveUserData();
+        _saveGlobalData();
 
         if (room.type == RoomType.boss) {
           _isDungeonCleared = true;
@@ -1053,7 +1085,7 @@ class _SudokuScreenState extends State<SudokuScreen>
         bonusGoldFromLevelUp = (_userData.level - initialUserLevel) * 50;
         _userData.addGold(bonusGoldFromLevelUp);
       }
-      await _saveUserData();
+      await _saveGlobalData();
 
       // 랭킹 저장 (데일리 도전/일반 공통)
       final entry = RankingEntry(
@@ -1115,9 +1147,18 @@ class _SudokuScreenState extends State<SudokuScreen>
         _undoUses = 0;
         _history.clear();
         _combatLogMessages.clear();
-        _currentMonster = MonsterTemplates.getMonsterForRoom(
-          _dungeonMap.currentRoom.type,
+        var nextMonster = MonsterTemplates.getMonsterForTheme(
+          targetRoom.type,
+          _dungeonMap.theme.name,
+          _userData.level,
         );
+        _currentMonster = nextMonster;
+
+        // 몬스터 도감 발견 기록
+        if (_currentMonster.name != "없음") {
+          _userData.stats.discoveredMonsterNames.add(_currentMonster.name);
+        }
+
         _startTimer();
 
         if (_dungeonMap.currentRoom.type == RoomType.boss) {
@@ -1175,53 +1216,32 @@ class _SudokuScreenState extends State<SudokuScreen>
   }
 
   Widget _buildMoveButtons() {
-    return Stack(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Align(
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 20),
-            child: _buildMoveButton(
-              "Up",
-              Icons.keyboard_arrow_up,
-              _dungeonMap.currentX,
-              _dungeonMap.currentY - 1,
-              isBossDoor: _isDirectionBoss(
-                _dungeonMap.currentX,
-                _dungeonMap.currentY - 1,
-              ),
-              canMove: _dungeonMap.canMoveTo(
-                _dungeonMap.currentX,
-                _dungeonMap.currentY - 1,
-              ),
-            ),
+        // 위쪽 버튼
+        _buildMoveButton(
+          "Up",
+          Icons.keyboard_arrow_up,
+          _dungeonMap.currentX,
+          _dungeonMap.currentY - 1,
+          isBossDoor: _isDirectionBoss(
+            _dungeonMap.currentX,
+            _dungeonMap.currentY - 1,
+          ),
+          canMove: _dungeonMap.canMoveTo(
+            _dungeonMap.currentX,
+            _dungeonMap.currentY - 1,
           ),
         ),
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: _buildMoveButton(
-              "Down",
-              Icons.keyboard_arrow_down,
-              _dungeonMap.currentX,
-              _dungeonMap.currentY + 1,
-              isBossDoor: _isDirectionBoss(
-                _dungeonMap.currentX,
-                _dungeonMap.currentY + 1,
-              ),
-              canMove: _dungeonMap.canMoveTo(
-                _dungeonMap.currentX,
-                _dungeonMap.currentY + 1,
-              ),
-            ),
-          ),
-        ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Padding(
-            padding: const EdgeInsets.only(left: 20),
-            child: _buildMoveButton(
+        const SizedBox(height: 16),
+        // 왼쪽 / 오른쪽 버튼 행
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildMoveButton(
               "Left",
               Icons.keyboard_arrow_left,
               _dungeonMap.currentX - 1,
@@ -1235,13 +1255,8 @@ class _SudokuScreenState extends State<SudokuScreen>
                 _dungeonMap.currentY,
               ),
             ),
-          ),
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: _buildMoveButton(
+            const SizedBox(width: 80), // 중앙 십자형 간격 확보
+            _buildMoveButton(
               "Right",
               Icons.keyboard_arrow_right,
               _dungeonMap.currentX + 1,
@@ -1255,11 +1270,31 @@ class _SudokuScreenState extends State<SudokuScreen>
                 _dungeonMap.currentY,
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // 아래쪽 버튼
+        _buildMoveButton(
+          "Down",
+          Icons.keyboard_arrow_down,
+          _dungeonMap.currentX,
+          _dungeonMap.currentY + 1,
+          isBossDoor: _isDirectionBoss(
+            _dungeonMap.currentX,
+            _dungeonMap.currentY + 1,
+          ),
+          canMove: _dungeonMap.canMoveTo(
+            _dungeonMap.currentX,
+            _dungeonMap.currentY + 1,
           ),
         ),
-        // 콤보 및 상태 효과 UI
-        if (_comboCount > 1) _buildComboUI(),
-        if (_activeEvents.isNotEmpty) _buildEventStatusBar(),
+        // 콤보 및 상태 효과 UI는 별도의 오버레이로 존재해야 하지만,
+        // 기존 코드 구조상 여기에 포함되어 있었다면 하단에 미세하게 배치
+        if (_comboCount > 1 || _activeEvents.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          if (_comboCount > 1) _buildComboUI(),
+          if (_activeEvents.isNotEmpty) _buildEventStatusBar(),
+        ],
       ],
     );
   }
@@ -1337,282 +1372,68 @@ class _SudokuScreenState extends State<SudokuScreen>
     );
   }
 
-  Widget _buildGameScreen() {
-    bool isLocked = _isCellLocked();
-    return KeyboardListener(
-      focusNode: FocusNode()..requestFocus(),
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent && !_isPaused) {
-          if (_showMoveButtons) {
-            switch (event.logicalKey) {
-              case LogicalKeyboardKey.arrowUp:
-                _moveToRoom(_dungeonMap.currentX, _dungeonMap.currentY - 1);
-                break;
-              case LogicalKeyboardKey.arrowDown:
-                _moveToRoom(_dungeonMap.currentX, _dungeonMap.currentY + 1);
-                break;
-              case LogicalKeyboardKey.arrowLeft:
-                _moveToRoom(_dungeonMap.currentX - 1, _dungeonMap.currentY);
-                break;
-              case LogicalKeyboardKey.arrowRight:
-                _moveToRoom(_dungeonMap.currentX + 1, _dungeonMap.currentY);
-                break;
-            }
-          }
-          final label = event.logicalKey.keyLabel;
-          if (RegExp(r'^[1-9]$').hasMatch(label)) {
-            _handleNumberInput(int.parse(label));
-          } else if (label == 'f' || label == 'F') {
-            _fillOneEmptyCellWithAnswer();
-          } else if (event.logicalKey == LogicalKeyboardKey.backspace ||
-              event.logicalKey == LogicalKeyboardKey.delete) {
-            _handleNumberInput(0);
-          }
-        }
-      },
-      child: Column(
-        children: [
-          GameStatus(
-            difficulty:
-                "${_getCurrentSudokuBoard().difficulty.label} [${_getCurrentSudokuBoard().difficulty.rpgGrade}]",
-            mistakes: _getCurrentSudokuBoard().mistakes,
-            maxMistakes: _getCurrentSudokuBoard().maxMistakes,
-            time: _formatTime(_secondsElapsed),
-            onPauseTap: _togglePause,
-            playerLevel: _userData.level,
-            playerCurrentHp: _playerCombatStats.currentHp,
-            playerMaxHp: _playerCombatStats.maxHp,
-            playerCurrentXp: _userData.currentXp,
-            playerTotalXpNeeded: _userData.totalXpNeeded,
-            playerGold: _userData.gold,
-            hintsRemaining: _hintsRemaining,
-            undoCount: _undoUses,
-            maxUndoCount: _maxUndoUses,
-          ),
-          PurificationGauge(progress: _roomPurificationRate),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton.icon(
-                icon: const Icon(
-                  Icons.settings,
-                  size: 18,
-                  color: Colors.white70,
-                ),
-                label: const Text(
-                  "설정",
-                  style: TextStyle(color: Colors.white70),
-                ),
-                onPressed: _showSettingsDialog,
-              ),
-              const SizedBox(width: 10),
-            ],
-          ),
-          const Divider(),
+  void _handleHint() {
+    if (_isCellLocked() ||
+        _hintsRemaining <= 0 ||
+        _isPaused ||
+        _selectedRow == null)
+      return;
+    setState(() {
+      _history.add(
+        GameState(
+          dungeonMap: _dungeonMap.clone(),
+          currentMonster: _currentMonster,
+          playerCombatStats: _playerCombatStats,
+          combatLogMessages: List<String>.from(_combatLogMessages),
+          comboCount: _comboCount,
+          lastCorrectEntryTime: _lastCorrectEntryTime,
+          hintsRemaining: _hintsRemaining,
+          undoUses: _undoUses,
+        ),
+      );
+      if (_history.length > 20) {
+        _history.removeAt(0);
+      }
+      _getCurrentSudokuBoard().giveHint(_selectedRow!, _selectedCol!);
+      _hintsRemaining--;
+    });
+  }
 
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.zero,
-                child: _showMoveButtons
-                    ? Stack(
-                        children: [
-                          SudokuGrid(
-                            key: _gridKey,
-                            board: _getCurrentSudokuBoard(),
-                            onCellTap: _onCellTapped,
-                            onCellLongPress: _handleCellLongPress,
-                            selectedRow: _selectedRow,
-                            selectedCol: _selectedCol,
-                            errorMap: _getCurrentSudokuBoard().errorMap,
-                            isSuccess: _isSuccessAnimation,
-                            flashingRow: _flashingRow,
-                            flashingCol: _flashingCol,
-                            conflicts: _currentConflicts,
-                            errorRow: _errorRow,
-                            errorCol: _errorCol,
-                            conflictAnimationValue: _conflictAnimationValue,
-                          ),
-                          if (_errorExplanation != null)
-                            Positioned(
-                              bottom: 20,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.dangerColor.withValues(
-                                      alpha: 0.9,
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    _errorExplanation!,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          if (_dungeonMap.currentRoom.isCleared)
-                            Positioned.fill(
-                              child: Container(
-                                color: Colors.black54,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      "이미 정복한 지역입니다!",
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineMedium!
-                                          .copyWith(color: Colors.white),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    const SizedBox(height: 20),
-                                    _buildMoveButtons(),
-                                  ],
-                                ),
-                              ),
-                            )
-                          else
-                            Positioned.fill(
-                              child: Container(
-                                color: Colors.black54,
-                                child: _buildMoveButtons(),
-                              ),
-                            ),
-                        ],
-                      )
-                    : Stack(
-                        children: [
-                          SudokuGrid(
-                            key: _gridKey,
-                            board: _getCurrentSudokuBoard(),
-                            onCellTap: _onCellTapped,
-                            onCellLongPress: _handleCellLongPress,
-                            selectedRow: _selectedRow,
-                            selectedCol: _selectedCol,
-                            errorMap: _getCurrentSudokuBoard().errorMap,
-                            isSuccess: _isSuccessAnimation,
-                            flashingRow: _flashingRow,
-                            flashingCol: _flashingCol,
-                            conflicts: _currentConflicts,
-                            errorRow: _errorRow,
-                            errorCol: _errorCol,
-                            conflictAnimationValue: _conflictAnimationValue,
-                          ),
-                          if (_errorExplanation != null)
-                            Positioned(
-                              bottom: 20,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.redAccent.withValues(
-                                      alpha: 0.9,
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    _errorExplanation!,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-              ),
+  Widget _buildTopControls() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GameStatus(
+          difficulty:
+              "${_getCurrentSudokuBoard().difficulty.label} [${_getCurrentSudokuBoard().difficulty.rpgGrade}]",
+          mistakes: _getCurrentSudokuBoard().mistakes,
+          maxMistakes: _getCurrentSudokuBoard().maxMistakes,
+          time: _formatTime(_secondsElapsed),
+          onPauseTap: _togglePause,
+          playerLevel: _userData.level,
+          playerCurrentHp: _playerCombatStats.currentHp,
+          playerMaxHp: _playerCombatStats.maxHp,
+          playerCurrentXp: _userData.currentXp,
+          playerTotalXpNeeded: _userData.totalXpNeeded,
+          playerGold: _userData.gold,
+          hintsRemaining: _hintsRemaining,
+          undoCount: _undoUses,
+          maxUndoCount: _maxUndoUses,
+        ),
+        PurificationGauge(progress: _roomPurificationRate),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton.icon(
+              icon: const Icon(Icons.settings, size: 18, color: Colors.white70),
+              label: const Text("설정", style: TextStyle(color: Colors.white70)),
+              onPressed: _showSettingsDialog,
             ),
-          ),
-
-          CombatLog(logMessages: _combatLogMessages),
-
-          ActionButtons(
-            onUndo: (_history.isEmpty || _undoUses >= _maxUndoUses)
-                ? null
-                : () {
-                    _undoUses++;
-                    _handleUndo();
-                  },
-            onDelete: (isLocked || _isPaused)
-                ? null
-                : () => _handleNumberInput(0),
-            onMemoToggle: isLocked
-                ? null
-                : () => setState(() => _isMemoMode = !_isMemoMode),
-            isMemoOn: _isMemoMode,
-            hintCount: _hintsRemaining,
-            onHint:
-                (isLocked ||
-                    _hintsRemaining <= 0 ||
-                    _isPaused ||
-                    _selectedRow == null)
-                ? null
-                : () {
-                    setState(() {
-                      _history.add(
-                        GameState(
-                          dungeonMap: _dungeonMap.clone(),
-                          currentMonster: _currentMonster,
-                          playerCombatStats: _playerCombatStats,
-                          combatLogMessages: List<String>.from(
-                            _combatLogMessages,
-                          ),
-                          comboCount: _comboCount,
-                          lastCorrectEntryTime: _lastCorrectEntryTime,
-                          hintsRemaining: _hintsRemaining,
-                          undoUses: _undoUses,
-                        ),
-                      );
-                      if (_history.length > 20) {
-                        _history.removeAt(0);
-                      }
-                      _getCurrentSudokuBoard().giveHint(
-                        _selectedRow!,
-                        _selectedCol!,
-                      );
-                      _hintsRemaining--;
-                    });
-                  },
-            undoCount: _undoUses,
-            maxUndoCount: _maxUndoUses,
-          ),
-
-          NumberKeypad(
-            board: _getCurrentSudokuBoard(),
-            onNumberTap: (_isPaused || isLocked)
-                ? null
-                : (n) => _handleNumberInput(n),
-          ),
-
-          // 퀵슬롯 UI 추가
-          _buildQuickSlots(),
-          const AdSenseWidget(),
-        ],
-      ),
+            const SizedBox(width: 10),
+          ],
+        ),
+        const Divider(),
+      ],
     );
   }
 
@@ -1747,11 +1568,347 @@ class _SudokuScreenState extends State<SudokuScreen>
         _userData.inventory.remove(item);
       }
     });
-    _saveUserData();
+    _saveGlobalData();
+  }
+
+  Widget _buildSudokuBoardWidget() {
+    return Column(
+      children: [
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.zero,
+              child: _showMoveButtons
+                  ? Stack(
+                      children: [
+                        AspectRatio(
+                          aspectRatio: 1.0,
+                          child: SudokuGrid(
+                            key: _gridKey,
+                            board: _getCurrentSudokuBoard(),
+                            onCellTap: _onCellTapped,
+                            onCellLongPress: _handleCellLongPress,
+                            selectedRow: _selectedRow,
+                            selectedCol: _selectedCol,
+                            errorMap: _getCurrentSudokuBoard().errorMap,
+                            isSuccess: _isSuccessAnimation,
+                            flashingRow: _flashingRow,
+                            flashingCol: _flashingCol,
+                            conflicts: _currentConflicts,
+                            errorRow: _errorRow,
+                            errorCol: _errorCol,
+                            conflictAnimationValue: _conflictAnimationValue,
+                          ),
+                        ),
+                        if (_errorExplanation != null)
+                          Positioned(
+                            bottom: 20,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  _errorExplanation!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (_dungeonMap.currentRoom.isCleared)
+                          Positioned.fill(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(
+                                sigmaX: 5.0,
+                                sigmaY: 5.0,
+                              ),
+                              child: Container(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        "이미 정복한 지역입니다!",
+                                        style: GoogleFonts.cinzel(
+                                          color: Colors.white,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 30),
+                                      _buildMoveButtons(),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Positioned.fill(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(
+                                sigmaX: 3.0,
+                                sigmaY: 3.0,
+                              ),
+                              child: Container(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                child: Center(child: _buildMoveButtons()),
+                              ),
+                            ),
+                          ),
+                      ],
+                    )
+                  : Stack(
+                      children: [
+                        AspectRatio(
+                          aspectRatio: 1.0,
+                          child: SudokuGrid(
+                            key: _gridKey,
+                            board: _getCurrentSudokuBoard(),
+                            onCellTap: _onCellTapped,
+                            onCellLongPress: _handleCellLongPress,
+                            selectedRow: _selectedRow,
+                            selectedCol: _selectedCol,
+                            errorMap: _getCurrentSudokuBoard().errorMap,
+                            isSuccess: _isSuccessAnimation,
+                            flashingRow: _flashingRow,
+                            flashingCol: _flashingCol,
+                            conflicts: _currentConflicts,
+                            errorRow: _errorRow,
+                            errorCol: _errorCol,
+                            conflictAnimationValue: _conflictAnimationValue,
+                          ),
+                        ),
+                        if (_errorExplanation != null)
+                          Positioned(
+                            bottom: 20,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  _errorExplanation!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+        CombatLog(logMessages: _combatLogMessages),
+      ],
+    );
+  }
+
+  Widget _buildResponsiveLayout() {
+    bool isLocked = _isCellLocked();
+    return KeyboardListener(
+      focusNode: FocusNode()..requestFocus(),
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent && !_isPaused) {
+          if (_showMoveButtons) {
+            switch (event.logicalKey) {
+              case LogicalKeyboardKey.arrowUp:
+                _moveToRoom(_dungeonMap.currentX, _dungeonMap.currentY - 1);
+                break;
+              case LogicalKeyboardKey.arrowDown:
+                _moveToRoom(_dungeonMap.currentX, _dungeonMap.currentY + 1);
+                break;
+              case LogicalKeyboardKey.arrowLeft:
+                _moveToRoom(_dungeonMap.currentX - 1, _dungeonMap.currentY);
+                break;
+              case LogicalKeyboardKey.arrowRight:
+                _moveToRoom(_dungeonMap.currentX + 1, _dungeonMap.currentY);
+                break;
+            }
+          }
+          final label = event.logicalKey.keyLabel;
+          if (RegExp(r'^[1-9]$').hasMatch(label)) {
+            _handleNumberInput(int.parse(label));
+          } else if (label == 'f' || label == 'F') {
+            _fillOneEmptyCellWithAnswer();
+          } else if (event.logicalKey == LogicalKeyboardKey.backspace ||
+              event.logicalKey == LogicalKeyboardKey.delete) {
+            _handleNumberInput(0);
+          }
+        }
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 900) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 75,
+                  child: Column(
+                    children: [
+                      MonsterStatus(key: _monsterKey, monster: _currentMonster),
+                      const SizedBox(height: 10),
+                      Expanded(child: _buildSudokuBoardWidget()),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 25,
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 16.0),
+                      child: Column(
+                        children: [
+                          _buildTopControls(),
+                          ActionButtons(
+                            onUndo:
+                                (_history.isEmpty || _undoUses >= _maxUndoUses)
+                                ? null
+                                : () {
+                                    _undoUses++;
+                                    _handleUndo();
+                                  },
+                            onDelete: (isLocked || _isPaused)
+                                ? null
+                                : () => _handleNumberInput(0),
+                            onMemoToggle: isLocked
+                                ? null
+                                : () => setState(
+                                    () => _isMemoMode = !_isMemoMode,
+                                  ),
+                            isMemoOn: _isMemoMode,
+                            hintCount: _hintsRemaining,
+                            onHint:
+                                (isLocked ||
+                                    _hintsRemaining <= 0 ||
+                                    _isPaused ||
+                                    _selectedRow == null)
+                                ? null
+                                : _handleHint,
+                            undoCount: _undoUses,
+                            maxUndoCount: _maxUndoUses,
+                          ),
+                          NumberKeypad(
+                            board: _getCurrentSudokuBoard(),
+                            onNumberTap: (_isPaused || isLocked)
+                                ? null
+                                : (n) => _handleNumberInput(n),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Text(
+                              "Map Pos: (${_dungeonMap.currentX}, ${_dungeonMap.currentY})",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.blueGrey,
+                              ),
+                            ),
+                          ),
+                          Transform.scale(
+                            scale: 0.8,
+                            child: _buildQuickSlots(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            return Column(
+              children: [
+                _buildTopControls(),
+                MonsterStatus(key: _monsterKey, monster: _currentMonster),
+                Expanded(child: _buildSudokuBoardWidget()),
+                ActionButtons(
+                  onUndo: (_history.isEmpty || _undoUses >= _maxUndoUses)
+                      ? null
+                      : () {
+                          _undoUses++;
+                          _handleUndo();
+                        },
+                  onDelete: (isLocked || _isPaused)
+                      ? null
+                      : () => _handleNumberInput(0),
+                  onMemoToggle: isLocked
+                      ? null
+                      : () => setState(() => _isMemoMode = !_isMemoMode),
+                  isMemoOn: _isMemoMode,
+                  hintCount: _hintsRemaining,
+                  onHint:
+                      (isLocked ||
+                          _hintsRemaining <= 0 ||
+                          _isPaused ||
+                          _selectedRow == null)
+                      ? null
+                      : _handleHint,
+                  undoCount: _undoUses,
+                  maxUndoCount: _maxUndoUses,
+                ),
+                NumberKeypad(
+                  board: _getCurrentSudokuBoard(),
+                  onNumberTap: (_isPaused || isLocked)
+                      ? null
+                      : (n) => _handleNumberInput(n),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    "Map Pos: (${_dungeonMap.currentX}, ${_dungeonMap.currentY})",
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.blueGrey,
+                    ),
+                  ),
+                ),
+                Transform.scale(scale: 0.8, child: _buildQuickSlots()),
+              ],
+            );
+          }
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin 필수 호출
     if (!_isInitialized) {
       return const Scaffold(
         backgroundColor: Color(0xFF0F172A),
@@ -1816,30 +1973,10 @@ class _SudokuScreenState extends State<SudokuScreen>
                     ],
                   ),
                 ),
-                MonsterStatus(key: _monsterKey, monster: _currentMonster),
-                const SizedBox(height: 10),
                 Expanded(
                   child: Row(
                     children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 8.0,
-                              ),
-                              child: Text(
-                                "Map Pos: (${_dungeonMap.currentX}, ${_dungeonMap.currentY})",
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.blueGrey,
-                                ),
-                              ),
-                            ),
-                            Expanded(child: _buildGameScreen()),
-                          ],
-                        ),
-                      ),
+                      Expanded(child: _buildResponsiveLayout()),
                       if (MediaQuery.of(context).size.width > 600)
                         MiniMap(dungeonMap: _dungeonMap),
                     ],

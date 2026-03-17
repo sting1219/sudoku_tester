@@ -7,13 +7,18 @@ import 'conflict_painter.dart';
 
 class SudokuGrid extends StatelessWidget {
   final SudokuBoard board;
-  final Function(int row, int col) onCellTap; // 셀이 탭되었을 때 호출될 콜백
-  final int? selectedRow; // 현재 선택된 셀의 행
-  final int? selectedCol; // 현재 선택된 셀의 열
+  final Function(int row, int col) onCellTap;
+  final int? selectedRow;
+  final int? selectedCol;
   final List<List<bool>> errorMap;
   final bool isSuccess;
-  final int? flashingRow; // 플래시 효과를 줄 행
-  final int? flashingCol; // 플래시 효과를 줄 열
+  final int? flashingRow;
+  final int? flashingCol;
+  final Function(int row, int col)? onCellLongPress;
+  final List<Map<String, int>> conflicts;
+  final int? errorRow;
+  final int? errorCol;
+  final double conflictAnimationValue;
 
   const SudokuGrid({
     super.key,
@@ -32,33 +37,248 @@ class SudokuGrid extends StatelessWidget {
     this.conflictAnimationValue = 0.0,
   });
 
-  final Function(int row, int col)? onCellLongPress;
-  final List<Map<String, int>> conflicts;
-  final int? errorRow;
-  final int? errorCol;
-  final double conflictAnimationValue;
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1.0,
+      child: Container(
+        padding: const EdgeInsets.all(4.0),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.white54, width: 2.0),
+        ),
+        child: Stack(
+          children: [
+            GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 9,
+                childAspectRatio: 1.0,
+                crossAxisSpacing: 0.0,
+                mainAxisSpacing: 0.0,
+              ),
+              itemCount: 81,
+              itemBuilder: (context, index) {
+                final row = index ~/ 9;
+                final col = index % 9;
+                final isInitial = board.initialGrid[row][col] != 0;
+                final isSelected = row == selectedRow && col == selectedCol;
+                final isError = errorMap[row][col];
 
-  // lib/widgets/sudoku_grid.dart 클래스 내부
-  Widget _buildCellContent(
-    SudokuBoard board,
-    int row,
-    int col,
-    bool isInitial,
-    bool isError,
-  ) {
-    int value = board.currentGrid[row][col];
-    List<int> cellNotes = board.notes[row][col];
+                int? selectedValue;
+                if (selectedRow != null && selectedCol != null) {
+                  selectedValue = board.currentGrid[selectedRow!][selectedCol!];
+                }
 
-    // 내부 여백을 주어 테두리와 숫자가 겹치지 않게 보호
+                bool isRelated = false;
+                if (selectedRow != null && selectedCol != null) {
+                  int startRow = (selectedRow! ~/ 3) * 3;
+                  int startCol = (selectedCol! ~/ 3) * 3;
+                  if (row == selectedRow ||
+                      col == selectedCol ||
+                      (row >= startRow &&
+                          row < startRow + 3 &&
+                          col >= startCol &&
+                          col < startCol + 3)) {
+                    isRelated = true;
+                  }
+                }
+
+                bool isSameValue = false;
+                if (selectedValue != null &&
+                    selectedValue != 0 &&
+                    board.currentGrid[row][col] == selectedValue) {
+                  isSameValue = true;
+                }
+
+                bool isFlashing = false;
+                if (flashingRow != null && flashingCol != null) {
+                  int fStartRow = (flashingRow! ~/ 3) * 3;
+                  int fStartCol = (flashingCol! ~/ 3) * 3;
+                  if (row == flashingRow ||
+                      col == flashingCol ||
+                      (row >= fStartRow &&
+                          row < fStartRow + 3 &&
+                          col >= fStartCol &&
+                          col < fStartCol + 3)) {
+                    isFlashing = true;
+                  }
+                }
+
+                return SudokuCell(
+                  key: ValueKey('cell_${row}_${col}'),
+                  row: row,
+                  col: col,
+                  value: board.currentGrid[row][col],
+                  notes: board.notes[row][col],
+                  isInitial: isInitial,
+                  isSelected: isSelected,
+                  isError: isError,
+                  isRelated: isRelated,
+                  isSameValue: isSameValue,
+                  isFlashing: isFlashing,
+                  isSuccess: isSuccess,
+                  isShake: row == errorRow && col == errorCol,
+                  onTap: () => onCellTap(row, col),
+                  onLongPress: () => onCellLongPress?.call(row, col),
+                );
+              },
+            ),
+            if (conflicts.isNotEmpty && errorRow != null && errorCol != null)
+              IgnorePointer(
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: ConflictPainter(
+                    conflicts: conflicts,
+                    targetRow: errorRow!,
+                    targetCol: errorCol!,
+                    animationValue: conflictAnimationValue,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SudokuCell extends StatelessWidget {
+  final int row;
+  final int col;
+  final int value;
+  final List<int> notes;
+  final bool isInitial;
+  final bool isSelected;
+  final bool isError;
+  final bool isRelated;
+  final bool isSameValue;
+  final bool isFlashing;
+  final bool isSuccess;
+  final bool isShake;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const SudokuCell({
+    super.key,
+    required this.row,
+    required this.col,
+    required this.value,
+    required this.notes,
+    required this.isInitial,
+    required this.isSelected,
+    required this.isError,
+    required this.isRelated,
+    required this.isSameValue,
+    required this.isFlashing,
+    required this.isSuccess,
+    required this.isShake,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color baseColor = AppColors.scaffoldBackground;
+    Color cellColor = baseColor;
+
+    if (isError) {
+      cellColor = Color.alphaBlend(
+        Colors.red.withValues(alpha: 0.4),
+        baseColor,
+      );
+    } else if (isFlashing) {
+      cellColor = Color.alphaBlend(
+        Colors.amber.withValues(alpha: 0.6),
+        baseColor,
+      );
+    } else if (isSelected) {
+      cellColor = Color.alphaBlend(
+        Colors.blue.withValues(alpha: 0.5),
+        baseColor,
+      );
+    } else if (isSameValue) {
+      cellColor = Color.alphaBlend(
+        Colors.blueAccent.withValues(alpha: 0.2),
+        baseColor,
+      );
+    } else if (isRelated) {
+      cellColor = Color.alphaBlend(
+        Colors.white.withValues(alpha: 0.1),
+        baseColor,
+      );
+    }
+
+    if (isSuccess) {
+      cellColor = Colors.green[400]!;
+    }
+
+    return ShakeWidget(
+      shake: isShake,
+      child: GestureDetector(
+        onTap: isSuccess ? null : onTap,
+        onLongPress: isSuccess ? null : onLongPress,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
+            color: cellColor,
+            boxShadow: (isSuccess || isFlashing)
+                ? [
+                    BoxShadow(
+                      color: Colors.amber.withValues(alpha: 0.5),
+                      blurRadius: 10.0,
+                      spreadRadius: 2.0,
+                    ),
+                  ]
+                : null,
+            border: isSelected
+                ? Border.all(color: Colors.white, width: 3.0)
+                : Border(
+                    top: BorderSide(
+                      width: row % 3 == 0 ? 3.0 : 0.5,
+                      color: row % 3 == 0
+                          ? const Color(0xFF3D522B)
+                          : const Color(0xFF2A3621),
+                    ),
+                    left: BorderSide(
+                      width: col % 3 == 0 ? 3.0 : 0.5,
+                      color: col % 3 == 0
+                          ? const Color(0xFF3D522B)
+                          : const Color(0xFF2A3621),
+                    ),
+                    right: BorderSide(
+                      width: col == 8 ? 3.0 : 0.5,
+                      color: col == 8
+                          ? const Color(0xFF3D522B)
+                          : const Color(0xFF2A3621),
+                    ),
+                    bottom: BorderSide(
+                      width: row == 8 ? 3.0 : 0.5,
+                      color: row == 8
+                          ? const Color(0xFF3D522B)
+                          : const Color(0xFF2A3621),
+                    ),
+                  ),
+          ),
+          child: Center(
+            child: isSuccess
+                ? const Icon(Icons.check_circle, color: Colors.white, size: 24)
+                : _buildCellContent(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCellContent() {
     return Padding(
       padding: const EdgeInsets.all(4.0),
       child: Center(
         child: value != 0
-            ? // 1. 값이 있는 경우: 중앙에 큰 숫자 하나만 배치
-              FittedBox(
+            ? FittedBox(
                 fit: BoxFit.contain,
                 child: TweenAnimationBuilder<double>(
-                  key: ValueKey('cell_${row}_${col}_$value'),
+                  key: ValueKey('cell_text_${row}_${col}_$value'),
                   tween: Tween<double>(begin: 0.8, end: 1.0),
                   duration: const Duration(milliseconds: 600),
                   curve: Curves.elasticOut,
@@ -92,8 +312,7 @@ class SudokuGrid extends StatelessWidget {
                   },
                 ),
               )
-            : // 2. 값이 없는 경우: 메모 그리드 배치 (값이 있을 때는 아예 렌더링 안 됨)
-              (cellNotes.isNotEmpty
+            : (notes.isNotEmpty
                   ? GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -105,7 +324,7 @@ class SudokuGrid extends StatelessWidget {
                       itemCount: 9,
                       itemBuilder: (context, i) {
                         int noteNum = i + 1;
-                        bool hasNote = cellNotes.contains(noteNum);
+                        bool hasNote = notes.contains(noteNum);
                         return Center(
                           child: FittedBox(
                             fit: BoxFit.contain,
@@ -125,212 +344,6 @@ class SudokuGrid extends StatelessWidget {
                       },
                     )
                   : const SizedBox.shrink()),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1.0, // 보드를 항상 정사각형으로 유지
-      child: Container(
-        padding: const EdgeInsets.all(4.0),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white54, width: 2.0), // 전체 테두리 상향
-        ),
-        child: Stack(
-          children: [
-            GridView.builder(
-              physics: const NeverScrollableScrollPhysics(), // 스크롤 방지
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 9,
-                childAspectRatio: 1.0,
-                crossAxisSpacing: 0.0,
-                mainAxisSpacing: 0.0,
-              ),
-              itemCount: 81,
-              itemBuilder: (context, index) {
-                final row = index ~/ 9;
-                final col = index % 9;
-                final isInitial = board.initialGrid[row][col] != 0; // 힌트 숫자 여부
-                final isSelected =
-                    row == selectedRow && col == selectedCol; // 선택 여부
-                final isError = errorMap[row][col]; // 에러 발생 여부 확인
-                // 현재 선택된 셀의 숫자 (0이 아닐 때만)
-                int? selectedValue;
-                if (selectedRow != null && selectedCol != null) {
-                  selectedValue = board.currentGrid[selectedRow!][selectedCol!];
-                }
-
-                // 2. 관련 라인(행/열/박스) 체크 로직
-                bool isRelated = false;
-                if (selectedRow != null && selectedCol != null) {
-                  int startRow = (selectedRow! ~/ 3) * 3;
-                  int startCol = (selectedCol! ~/ 3) * 3;
-
-                  if (row == selectedRow ||
-                      col == selectedCol ||
-                      (row >= startRow &&
-                          row < startRow + 3 &&
-                          col >= startCol &&
-                          col < startCol + 3)) {
-                    isRelated = true;
-                  }
-                }
-                // 3. 같은 숫자를 가진 셀 체크 (0 제외)
-                bool isSameValue = false;
-                if (selectedValue != null &&
-                    selectedValue != 0 &&
-                    board.currentGrid[row][col] == selectedValue) {
-                  isSameValue = true;
-                }
-
-                // 3.5 정답 플래시 영역 체크
-                bool isFlashing = false;
-                if (flashingRow != null && flashingCol != null) {
-                  int fStartRow = (flashingRow! ~/ 3) * 3;
-                  int fStartCol = (flashingCol! ~/ 3) * 3;
-                  if (row == flashingRow ||
-                      col == flashingCol ||
-                      (row >= fStartRow &&
-                          row < fStartRow + 3 &&
-                          col >= fStartCol &&
-                          col < fStartCol + 3)) {
-                    isFlashing = true;
-                  }
-                }
-                // 4. 색상 우선순위 결정 (AlphaBlend로 '중첩' 효과 구현)
-                final Color baseColor = AppColors.scaffoldBackground;
-                Color cellColor = baseColor;
-
-                if (isError) {
-                  cellColor = Color.alphaBlend(
-                    Colors.red.withValues(alpha: 0.4),
-                    baseColor,
-                  );
-                } else if (isFlashing) {
-                  // 정답 플래시 효과: 황금색/밝은 파란색
-                  cellColor = Color.alphaBlend(
-                    Colors.amber.withValues(alpha: 0.6),
-                    baseColor,
-                  );
-                } else if (isSelected) {
-                  // 유저가 선택한 셀 강조색
-                  cellColor = Color.alphaBlend(
-                    Colors.blue.withValues(alpha: 0.5),
-                    baseColor,
-                  );
-                } else if (isSameValue) {
-                  // 동일 숫자 강조 (0 제외)
-                  cellColor = Color.alphaBlend(
-                    Colors.blueAccent.withValues(alpha: 0.2),
-                    baseColor,
-                  );
-                } else if (isRelated) {
-                  // 가로/세로줄 강조 (박스는 제외하고 싶다면 관련 로직 수정 필요하나 현재는 행/열/박스 포함)
-                  // 사용자가 "가로줄과 세로줄 전체"라고 명시했으므로 이에 맞춰 은은하게 강조
-                  cellColor = Color.alphaBlend(
-                    Colors.white.withValues(alpha: 0.1),
-                    baseColor,
-                  );
-                }
-
-                // 🎇 성공 시 색상 변경 (초록색 반짝임)
-                if (isSuccess) {
-                  cellColor = Colors.green[400]!;
-                }
-
-                return ShakeWidget(
-                  shake: row == errorRow && col == errorCol,
-                  child: GestureDetector(
-                    onTap: isSuccess
-                        ? null
-                        : () => onCellTap(row, col), // 성공 시 터치 막기
-                    onLongPress: isSuccess
-                        ? null
-                        : () => onCellLongPress?.call(row, col),
-                    child: AnimatedContainer(
-                      // Container를 AnimatedContainer로 변경하여 부드러운 전환 구현
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                      decoration: BoxDecoration(
-                        color: cellColor,
-                        boxShadow: (isSuccess || isFlashing)
-                            ? [
-                                BoxShadow(
-                                  color: Colors.amber.withValues(alpha: 0.5),
-                                  blurRadius: 10.0,
-                                  spreadRadius: 2.0,
-                                ),
-                              ]
-                            : null,
-                        border: isSelected
-                            ? Border.all(
-                                color: Colors.white,
-                                width: 3.0,
-                              ) // 선택된 셀의 두꺼운 테두리
-                            : Border(
-                                // 일반 셀의 격자 선
-                                top: BorderSide(
-                                  width: row % 3 == 0 ? 3.0 : 0.5,
-                                  color: row % 3 == 0
-                                      ? const Color(0xFF3D522B)
-                                      : const Color(0xFF2A3621),
-                                ),
-                                left: BorderSide(
-                                  width: col % 3 == 0 ? 3.0 : 0.5,
-                                  color: col % 3 == 0
-                                      ? const Color(0xFF3D522B)
-                                      : const Color(0xFF2A3621),
-                                ),
-                                right: BorderSide(
-                                  width: col == 8 ? 3.0 : 0,
-                                  color: col == 8
-                                      ? const Color(0xFF3D522B)
-                                      : const Color(0xFF2A3621),
-                                ),
-                                bottom: BorderSide(
-                                  width: row == 8 ? 3.0 : 0,
-                                  color: row == 8
-                                      ? const Color(0xFF3D522B)
-                                      : const Color(0xFF2A3621),
-                                ),
-                              ),
-                      ),
-                      child: Center(
-                        child: isSuccess
-                            ? const Icon(
-                                Icons.check_circle,
-                                color: Colors.white,
-                                size: 24,
-                              ) // ⭐️ 숫지 대신 체크 아이콘
-                            : _buildCellContent(
-                                board,
-                                row,
-                                col,
-                                isInitial,
-                                isError,
-                              ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            if (conflicts.isNotEmpty && errorRow != null && errorCol != null)
-              IgnorePointer(
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: ConflictPainter(
-                    conflicts: conflicts,
-                    targetRow: errorRow!,
-                    targetCol: errorCol!,
-                    animationValue: conflictAnimationValue,
-                  ),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }

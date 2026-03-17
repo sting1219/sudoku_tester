@@ -3,6 +3,7 @@ import '../widgets/firefly_background.dart';
 import '../widgets/archive_view.dart';
 import '../models/user_data.dart';
 import 'sudoku_screen.dart';
+import 'privacy_policy_view.dart';
 
 class HomeView extends StatelessWidget {
   final bool isStarted;
@@ -129,7 +130,7 @@ class HomeView extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.08),
+                                  color: Colors.white.withOpacity(0.08),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: Colors.white12),
                                 ),
@@ -144,6 +145,27 @@ class HomeView extends StatelessWidget {
                                   textAlign: TextAlign.center,
                                 ),
                               ),
+                              const SizedBox(height: 24),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const PrivacyPolicyView(),
+                                    ),
+                                  );
+                                },
+                                child: const Text(
+                                  "개인정보처리방침 (Privacy Policy)",
+                                  style: TextStyle(
+                                    color: Colors.white24,
+                                    fontSize: 11,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
                             ],
                           ),
                         ),

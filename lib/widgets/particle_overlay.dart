@@ -62,34 +62,36 @@ class _ParticleEffectState extends State<_ParticleEffect>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return Stack(
-          children: _particles.map((p) {
-            final double progress = _controller.value;
-            final double currentDistance = p.distance * progress;
-            final double opacity = (1.0 - progress).clamp(0.0, 1.0);
+        return RepaintBoundary(
+          child: Stack(
+            children: _particles.map((p) {
+              final double progress = _controller.value;
+              final double currentDistance = p.distance * progress;
+              final double opacity = (1.0 - progress).clamp(0.0, 1.0);
 
-            return Positioned(
-              left:
-                  widget.position.dx +
-                  cos(p.angle) * currentDistance -
-                  p.size / 2,
-              top:
-                  widget.position.dy +
-                  sin(p.angle) * currentDistance -
-                  p.size / 2,
-              child: Opacity(
-                opacity: opacity,
-                child: Container(
-                  width: p.size,
-                  height: p.size,
-                  decoration: BoxDecoration(
-                    color: p.color,
-                    shape: BoxShape.circle,
+              return Positioned(
+                left:
+                    widget.position.dx +
+                    cos(p.angle) * currentDistance -
+                    p.size / 2,
+                top:
+                    widget.position.dy +
+                    sin(p.angle) * currentDistance -
+                    p.size / 2,
+                child: Opacity(
+                  opacity: opacity,
+                  child: Container(
+                    width: p.size,
+                    height: p.size,
+                    decoration: BoxDecoration(
+                      color: p.color,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+          ),
         );
       },
     );
