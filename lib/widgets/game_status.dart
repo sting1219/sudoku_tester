@@ -16,8 +16,6 @@ class GameStatus extends StatelessWidget {
   final int playerCurrentHp;
   final int playerMaxHp;
   final int hintsRemaining; // 힌트 횟수
-  final int undoCount; // 실행 취소 횟수
-  final int maxUndoCount; // 최대 실행 취소 횟수
 
   const GameStatus({
     super.key,
@@ -33,8 +31,6 @@ class GameStatus extends StatelessWidget {
     required this.playerCurrentHp,
     required this.playerMaxHp,
     required this.hintsRemaining,
-    required this.undoCount,
-    required this.maxUndoCount,
   });
 
   @override
@@ -89,7 +85,6 @@ class GameStatus extends StatelessWidget {
               _buildSmallInfo("실수", "$mistakes/$maxMistakes"),
               _buildSmallInfo("시간", time),
               _buildSmallInfo("힌트", "$hintsRemaining"),
-              _buildSmallInfo("실행취소", "$undoCount/$maxUndoCount"),
               GestureDetector(
                 onTap: onPauseTap,
                 child: const Icon(

@@ -31,6 +31,14 @@ class UserStats {
   final Set<String> unlockedAchievementIds;
   final Set<String> claimedAchievementIds; // 보상 수령한 업적 목록
 
+  // 신규 수집형 도감 시스템 관련 필드
+  final Map<int, bool> unlockedForbiddenBooks; // 숫자 1~9에 대한 서적 해금 상태
+  final Set<String> unlockedArtifacts; // 획득한 골동품(유물) ID 목록
+  final Set<String> unlockedLostJournals; // 획득한 조각난 일지 ID 목록
+  final Set<int> collectedIllustrationPieces; // 획득한 차원의 낱장(조각) 인덱스(1~9)
+  final Map<int, int> killCountsByNumber; // 각 숫자별로 공격하여 몬스터를 처치한 횟수
+  final Map<String, int> monsterKillCounts; // 몬스터 ID/이름 단위 처치 횟수
+
   UserStats({
     this.totalGamesPlayed = 0,
     this.totalGamesWon = 0,
@@ -44,9 +52,21 @@ class UserStats {
     Set<String>? discoveredMonsterNames,
     Set<String>? unlockedAchievementIds,
     Set<String>? claimedAchievementIds,
+    Map<int, bool>? unlockedForbiddenBooks,
+    Set<String>? unlockedArtifacts,
+    Set<String>? unlockedLostJournals,
+    Set<int>? collectedIllustrationPieces,
+    Map<int, int>? killCountsByNumber,
+    Map<String, int>? monsterKillCounts,
   }) : discoveredMonsterNames = discoveredMonsterNames ?? {},
        unlockedAchievementIds = unlockedAchievementIds ?? {},
-       claimedAchievementIds = claimedAchievementIds ?? {};
+       claimedAchievementIds = claimedAchievementIds ?? {},
+       unlockedForbiddenBooks = unlockedForbiddenBooks ?? {},
+       unlockedArtifacts = unlockedArtifacts ?? {},
+       unlockedLostJournals = unlockedLostJournals ?? {},
+       collectedIllustrationPieces = collectedIllustrationPieces ?? {},
+       killCountsByNumber = killCountsByNumber ?? {},
+       monsterKillCounts = monsterKillCounts ?? {};
 
   UserStats clone() {
     return UserStats(
@@ -62,6 +82,12 @@ class UserStats {
       discoveredMonsterNames: Set<String>.from(discoveredMonsterNames),
       unlockedAchievementIds: Set<String>.from(unlockedAchievementIds),
       claimedAchievementIds: Set<String>.from(claimedAchievementIds),
+      unlockedForbiddenBooks: Map<int, bool>.from(unlockedForbiddenBooks),
+      unlockedArtifacts: Set<String>.from(unlockedArtifacts),
+      unlockedLostJournals: Set<String>.from(unlockedLostJournals),
+      collectedIllustrationPieces: Set<int>.from(collectedIllustrationPieces),
+      killCountsByNumber: Map<int, int>.from(killCountsByNumber),
+      monsterKillCounts: Map<String, int>.from(monsterKillCounts),
     );
   }
 
@@ -101,6 +127,36 @@ class UserStats {
               ?.map((e) => e as String)
               .toSet() ??
           {},
+      unlockedForbiddenBooks:
+          (json['unlocked_forbidden_books'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(int.tryParse(k) ?? 0, v as bool),
+          ) ??
+          {},
+      unlockedArtifacts:
+          (json['unlocked_artifacts'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toSet() ??
+          {},
+      collectedIllustrationPieces:
+          (json['collected_illustration_pieces'] as List<dynamic>?)
+              ?.map((e) => e as int)
+              .toSet() ??
+          {},
+      killCountsByNumber:
+          (json['kill_counts_by_number'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(int.tryParse(k) ?? 0, v as int),
+          ) ??
+          {},
+      unlockedLostJournals:
+          (json['unlocked_lost_journals'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toSet() ??
+          {},
+      monsterKillCounts:
+          (json['monster_kill_counts'] as Map<String, dynamic>?)?.map(
+            (k, v) => MapEntry(k, v as int),
+          ) ??
+          {},
     );
   }
 
@@ -118,6 +174,16 @@ class UserStats {
       'discovered_monster_names': discoveredMonsterNames.toList(),
       'unlocked_achievement_ids': unlockedAchievementIds.toList(),
       'claimed_achievement_ids': claimedAchievementIds.toList(),
+      'unlocked_forbidden_books': unlockedForbiddenBooks.map(
+        (k, v) => MapEntry(k.toString(), v),
+      ),
+      'unlocked_artifacts': unlockedArtifacts.toList(),
+      'collected_illustration_pieces': collectedIllustrationPieces.toList(),
+      'kill_counts_by_number': killCountsByNumber.map(
+        (k, v) => MapEntry(k.toString(), v),
+      ),
+      'unlocked_lost_journals': unlockedLostJournals.toList(),
+      'monster_kill_counts': monsterKillCounts,
     };
   }
 

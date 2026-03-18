@@ -15,6 +15,7 @@ import '../models/sound_manager.dart';
 import '../data/lore_data.dart';
 import '../services/achievement_service.dart';
 import '../services/currency_service.dart';
+import '../services/collection_service.dart';
 import '../services/game_state_manager.dart';
 
 import '../widgets/minimap.dart';
@@ -27,6 +28,7 @@ import '../widgets/sudoku_grid.dart';
 import '../widgets/projectile_animation.dart';
 import '../widgets/floating_damage.dart';
 import '../widgets/particle_overlay.dart';
+import '../src/ui/screens/wiki_screen.dart';
 import '../widgets/purification_gauge.dart';
 import '../widgets/pause_overlay.dart';
 import '../widgets/dungeon_clear_overlay.dart';
@@ -37,28 +39,7 @@ import '../models/skill_manager.dart';
 import '../models/item_model.dart';
 import 'inventory_screen.dart';
 
-// GameState class to hold a snapshot of the entire game state for the undo feature.
-class GameState {
-  final DungeonMap dungeonMap;
-  final Monster currentMonster;
-  final PlayerCombatStats playerCombatStats;
-  final List<String> combatLogMessages;
-  final int comboCount;
-  final DateTime? lastCorrectEntryTime;
-  final int hintsRemaining;
-  final int undoUses;
-
-  GameState({
-    required this.dungeonMap,
-    required this.currentMonster,
-    required this.playerCombatStats,
-    required this.combatLogMessages,
-    this.lastCorrectEntryTime,
-    required this.comboCount,
-    required this.hintsRemaining,
-    required this.undoUses,
-  });
-}
+// GameState class is removed since undo feature is no longer supported.
 
 class SudokuScreen extends StatefulWidget {
   final bool isGameStarted;
@@ -91,8 +72,6 @@ class _SudokuScreenState extends State<SudokuScreen>
   int _currentMistakes = 0; // 이번 판의 실수 횟수 추적
   bool _isMemoMode = false;
   int _hintsRemaining = 0;
-  final int _maxUndoUses = 3;
-  int _undoUses = 0;
   bool _isPaused = false;
   bool _isSuccessAnimation = false;
   bool _isDungeonCleared = false;
@@ -107,7 +86,6 @@ class _SudokuScreenState extends State<SudokuScreen>
   late Animation<double> _comboScaleAnimation;
 
   final List<String> _combatLogMessages = [];
-  final List<GameState> _history = [];
   int _comboCount = 0;
   DateTime? _lastCorrectEntryTime;
 
@@ -293,7 +271,6 @@ class _SudokuScreenState extends State<SudokuScreen>
       _selectedRow = null;
       _selectedCol = null;
       _hintsRemaining = 0;
-      _undoUses = 0;
       _isSuccessAnimation = false;
       _showMoveButtons = false;
 
@@ -313,7 +290,6 @@ class _SudokuScreenState extends State<SudokuScreen>
       );
       _comboCount = 0;
       _lastCorrectEntryTime = null;
-      _history.clear();
       _combatLogMessages.clear();
 
       // 몬스터 도감 등록
@@ -368,32 +344,6 @@ class _SudokuScreenState extends State<SudokuScreen>
     });
   }
 
-  void _handleUndo() {
-    if (_history.isEmpty) {
-      _addCombatLog("더 이상 실행 취소할 수 없습니다.");
-      return;
-    }
-    if (_undoUses >= _maxUndoUses) {
-      _addCombatLog("실행 취소 횟수를 모두 사용했습니다.");
-      return;
-    }
-
-    setState(() {
-      final lastState = _history.removeLast();
-      _dungeonMap = lastState.dungeonMap;
-      _currentMonster = lastState.currentMonster;
-      _playerCombatStats = lastState.playerCombatStats;
-      _combatLogMessages.clear();
-      _combatLogMessages.addAll(lastState.combatLogMessages);
-      _combatLogMessages.add("실행 취소됨.");
-
-      _comboCount = lastState.comboCount;
-      _lastCorrectEntryTime = lastState.lastCorrectEntryTime;
-      _hintsRemaining = lastState.hintsRemaining;
-      _undoUses = lastState.undoUses;
-    });
-  }
-
   bool _isCellCompletionCritical(int row, int col, int number) {
     return GameController.isCellCompletionCritical(
       _getCurrentSudokuBoard(),
@@ -411,7 +361,6 @@ class _SudokuScreenState extends State<SudokuScreen>
       return;
 
     if (_isCellLocked() && number == 0) {
-      _handleUndo();
       return;
     }
 
@@ -425,23 +374,6 @@ class _SudokuScreenState extends State<SudokuScreen>
         _getCurrentSudokuBoard().getCountOfNumber(number) >= 9) {
       _addCombatLog("$number는 이미 9개 모두 채워졌습니다.");
       return;
-    }
-
-    _history.add(
-      GameState(
-        dungeonMap: _dungeonMap.clone(),
-        currentMonster: _currentMonster,
-        playerCombatStats: _playerCombatStats,
-        combatLogMessages: List<String>.from(_combatLogMessages),
-        comboCount: _comboCount,
-        lastCorrectEntryTime: _lastCorrectEntryTime,
-        hintsRemaining: _hintsRemaining,
-        undoUses: _undoUses,
-      ),
-    );
-
-    if (_history.length > 20) {
-      _history.removeAt(0);
     }
 
     final int currentRow = _selectedRow!;
@@ -494,6 +426,15 @@ class _SudokuScreenState extends State<SudokuScreen>
           _comboMultiplier = 1.0;
         }
         _lastCorrectEntryTime = DateTime.now();
+
+        // 수집형 도감: 금지된 숫자의 서 해금 판정
+        CollectionService().recordNumberUsage(
+          number,
+          onUnlock: (msg) {
+            _addCombatLog(msg);
+            _showCollectionDialog("문헌 해금", msg);
+          },
+        );
 
         // 콤보 업적 체크
         AchievementService().checkComboAchievement(_userData, _comboCount);
@@ -952,6 +893,14 @@ class _SudokuScreenState extends State<SudokuScreen>
       AchievementService().checkDailyAchievement(_userData);
     }
 
+    // 수집형 도감: 퍼즐 조각 5% 드롭 판정
+    CollectionService().tryDropIllustrationPiece(
+      onUnlock: (msg) {
+        _addCombatLog(msg);
+        _showCollectionDialog("차원의 낱장 획득", msg);
+      },
+    );
+
     await _saveGlobalData();
   }
 
@@ -996,6 +945,79 @@ class _SudokuScreenState extends State<SudokuScreen>
     );
   }
 
+  void _showCollectionDialog(String title, String message) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: const Color(0xFF0F172A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Colors.amberAccent, width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.stars, color: Colors.amberAccent, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.cinzel(
+                  color: Colors.amberAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      "닫기",
+                      style: TextStyle(color: Colors.white24),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amberAccent.withValues(
+                        alpha: 0.2,
+                      ),
+                      foregroundColor: Colors.amberAccent,
+                      side: const BorderSide(color: Colors.amberAccent),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context); // 팝업 닫기
+                      // 도감 화면으로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WikiScreen(userData: _userData),
+                        ),
+                      );
+                    },
+                    child: const Text("도감에서 확인하기"),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _triggerMonsterSpecialAbility() {
     _addCombatLog("${_currentMonster.name}이(가) 특수 능력을 사용했습니다!");
   }
@@ -1034,6 +1056,17 @@ class _SudokuScreenState extends State<SudokuScreen>
               boardSnapshot: boardSnapshot,
             ),
           ],
+        );
+
+        // 수집형 도감: 골동품 10% 드롭 판정
+        CollectionService().tryDropArtifact(
+          onUnlock: (msg, artifact) {
+            _addCombatLog(msg);
+            _showCollectionDialog(
+              "정화가의 골동품 발견",
+              "$msg\n\n${artifact.description}",
+            );
+          },
         );
 
         if (_dungeonMap.purificationRate >= 1.0) {
@@ -1144,8 +1177,6 @@ class _SudokuScreenState extends State<SudokuScreen>
         _selectedRow = null;
         _selectedCol = null;
         _hintsRemaining = 0;
-        _undoUses = 0;
-        _history.clear();
         _combatLogMessages.clear();
         var nextMonster = MonsterTemplates.getMonsterForTheme(
           targetRoom.type,
@@ -1379,21 +1410,6 @@ class _SudokuScreenState extends State<SudokuScreen>
         _selectedRow == null)
       return;
     setState(() {
-      _history.add(
-        GameState(
-          dungeonMap: _dungeonMap.clone(),
-          currentMonster: _currentMonster,
-          playerCombatStats: _playerCombatStats,
-          combatLogMessages: List<String>.from(_combatLogMessages),
-          comboCount: _comboCount,
-          lastCorrectEntryTime: _lastCorrectEntryTime,
-          hintsRemaining: _hintsRemaining,
-          undoUses: _undoUses,
-        ),
-      );
-      if (_history.length > 20) {
-        _history.removeAt(0);
-      }
       _getCurrentSudokuBoard().giveHint(_selectedRow!, _selectedCol!);
       _hintsRemaining--;
     });
@@ -1417,8 +1433,6 @@ class _SudokuScreenState extends State<SudokuScreen>
           playerTotalXpNeeded: _userData.totalXpNeeded,
           playerGold: _userData.gold,
           hintsRemaining: _hintsRemaining,
-          undoCount: _undoUses,
-          maxUndoCount: _maxUndoUses,
         ),
         PurificationGauge(progress: _roomPurificationRate),
         Row(
@@ -1796,13 +1810,6 @@ class _SudokuScreenState extends State<SudokuScreen>
                         children: [
                           _buildTopControls(),
                           ActionButtons(
-                            onUndo:
-                                (_history.isEmpty || _undoUses >= _maxUndoUses)
-                                ? null
-                                : () {
-                                    _undoUses++;
-                                    _handleUndo();
-                                  },
                             onDelete: (isLocked || _isPaused)
                                 ? null
                                 : () => _handleNumberInput(0),
@@ -1820,8 +1827,6 @@ class _SudokuScreenState extends State<SudokuScreen>
                                     _selectedRow == null)
                                 ? null
                                 : _handleHint,
-                            undoCount: _undoUses,
-                            maxUndoCount: _maxUndoUses,
                           ),
                           NumberKeypad(
                             board: _getCurrentSudokuBoard(),
@@ -1857,12 +1862,6 @@ class _SudokuScreenState extends State<SudokuScreen>
                 MonsterStatus(key: _monsterKey, monster: _currentMonster),
                 Expanded(child: _buildSudokuBoardWidget()),
                 ActionButtons(
-                  onUndo: (_history.isEmpty || _undoUses >= _maxUndoUses)
-                      ? null
-                      : () {
-                          _undoUses++;
-                          _handleUndo();
-                        },
                   onDelete: (isLocked || _isPaused)
                       ? null
                       : () => _handleNumberInput(0),
@@ -1878,8 +1877,6 @@ class _SudokuScreenState extends State<SudokuScreen>
                           _selectedRow == null)
                       ? null
                       : _handleHint,
-                  undoCount: _undoUses,
-                  maxUndoCount: _maxUndoUses,
                 ),
                 NumberKeypad(
                   board: _getCurrentSudokuBoard(),

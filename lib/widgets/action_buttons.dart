@@ -2,25 +2,19 @@ import 'package:flutter/material.dart';
 import '../utils/app_styles.dart';
 
 class ActionButtons extends StatelessWidget {
-  final VoidCallback? onUndo;
   final VoidCallback? onDelete;
   final VoidCallback? onMemoToggle;
   final VoidCallback? onHint;
   final bool isMemoOn;
   final int hintCount;
-  final int undoCount; // 실행 취소 횟수
-  final int maxUndoCount; // 최대 실행 취소 횟수
 
   const ActionButtons({
     super.key,
-    this.onUndo,
     this.onDelete,
     this.onMemoToggle,
     required this.isMemoOn,
     required this.hintCount,
     this.onHint,
-    required this.undoCount,
-    required this.maxUndoCount,
   });
 
   @override
@@ -30,11 +24,6 @@ class ActionButtons extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildActionButton(
-            Icons.undo,
-            "실행 취소 ($undoCount/$maxUndoCount)",
-            onUndo,
-          ),
           _buildActionButton(Icons.auto_fix_normal, "지우기", onDelete),
           _buildActionButton(
             isMemoOn ? Icons.edit : Icons.edit_off,
