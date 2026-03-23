@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:web/web.dart' as web;
 import 'dungeon.dart';
 import 'item_model.dart';
+import '../data/lore_data.dart';
 
 class GameSettings {
   bool autoEraserEnabled;
@@ -225,7 +226,6 @@ class UserStats {
 
 class ClearedRoom {
   final String artifactName;
-  final String artifactLore;
   final int artifactNumber;
   final RoomType type;
   final String clearedDate;
@@ -233,17 +233,21 @@ class ClearedRoom {
 
   ClearedRoom({
     required this.artifactName,
-    required this.artifactLore,
     required this.artifactNumber,
     required this.type,
     required this.clearedDate,
     this.boardSnapshot = const [],
   });
+  // 텍스트는 저장하지 않고 상수를 참조하여 용량 최적화
+  String get artifactLore => _getLoreFromStatic(artifactNumber);
+
+  static String _getLoreFromStatic(int number) {
+    return LoreData.getLore(number);
+  }
 
   ClearedRoom clone() {
     return ClearedRoom(
       artifactName: artifactName,
-      artifactLore: artifactLore,
       artifactNumber: artifactNumber,
       type: type,
       clearedDate: clearedDate,
@@ -254,7 +258,6 @@ class ClearedRoom {
   factory ClearedRoom.fromJson(Map<String, dynamic> json) {
     return ClearedRoom(
       artifactName: json['artifact_name'] ?? "",
-      artifactLore: json['artifact_lore'] ?? "",
       artifactNumber: json['artifact_number'] ?? 0,
       type: RoomType.values.firstWhere(
         (e) => e.name == json['type'],
@@ -272,7 +275,6 @@ class ClearedRoom {
   Map<String, dynamic> toJson() {
     return {
       'artifact_name': artifactName,
-      'artifact_lore': artifactLore,
       'artifact_number': artifactNumber,
       'type': type.name,
       'cleared_date': clearedDate,

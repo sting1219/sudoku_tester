@@ -4,6 +4,7 @@ import '../widgets/archive_view.dart';
 import '../models/user_data.dart';
 import 'sudoku_screen.dart';
 import 'privacy_policy_view.dart';
+import 'terms_of_service_view.dart'; // Added this import
 
 class HomeView extends StatelessWidget {
   final bool isStarted;
@@ -146,24 +147,49 @@ class HomeView extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 24),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const PrivacyPolicyView(),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 16,
+                                children: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const PrivacyPolicyView(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      "개인정보처리방침",
+                                      style: TextStyle(
+                                        color: Colors.white24,
+                                        fontSize: 11,
+                                        decoration: TextDecoration.underline,
+                                      ),
                                     ),
-                                  );
-                                },
-                                child: const Text(
-                                  "개인정보처리방침 (Privacy Policy)",
-                                  style: TextStyle(
-                                    color: Colors.white24,
-                                    fontSize: 11,
-                                    decoration: TextDecoration.underline,
                                   ),
-                                ),
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const TermsOfServiceView(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      "이용약관",
+                                      style: TextStyle(
+                                        color: Colors.white24,
+                                        fontSize: 11,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 20),
                             ],

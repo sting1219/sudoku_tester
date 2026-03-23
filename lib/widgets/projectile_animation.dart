@@ -28,10 +28,8 @@ class _ProjectileAnimationState extends State<ProjectileAnimation>
   @override
   void initState() {
     super.initState();
-    // 베지어 곡선을 위한 제어점 계산 (궤적에 곡선미 부여)
     final midX = (widget.startPos.dx + widget.endPos.dx) / 2;
     final midY = (widget.startPos.dy + widget.endPos.dy) / 2;
-    // 무작위성을 주어 매번 다른 궤적 생성
     _controlPoint = Offset(
       midX + (math.Random().nextDouble() - 0.5) * 300,
       midY - 150 - math.Random().nextDouble() * 100,
@@ -47,7 +45,10 @@ class _ProjectileAnimationState extends State<ProjectileAnimation>
     );
 
     _controller.forward();
+    
+    // setState 호출 없이 데이터만 업데이트하고, rebuild는 AnimatedBuilder가 담당함
     _controller.addListener(_updateParticles);
+    
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         setState(() => _isHit = true);
@@ -61,28 +62,24 @@ class _ProjectileAnimationState extends State<ProjectileAnimation>
     final t = _animation.value;
     final currentPos = _calculateBezierPoint(t);
 
-    // 파티클 생성
-    setState(() {
-      _particles.add(
-        _Particle(
-          position: currentPos,
-          color: Colors.amberAccent.withValues(alpha: 0.8),
-          size: math.Random().nextDouble() * 4 + 2,
-          life: 1.0,
-        ),
-      );
+    // 파티클 생성 및 수명 업데이트 (setState 없이 수행)
+    _particles.add(
+      _Particle(
+        position: currentPos,
+        color: Colors.amberAccent.withValues(alpha: 0.8),
+        size: math.Random().nextDouble() * 4 + 2,
+        life: 1.0,
+      ),
+    );
 
-      // 파티클 업데이트 및 수명 다한 것 제거
-      for (var p in _particles) {
-        p.life -= 0.05;
-        p.position += Offset((math.Random().nextDouble() - 0.5) * 2, 1.0);
-      }
-      _particles.removeWhere((p) => p.life <= 0);
-    });
+    for (var p in _particles) {
+      p.life -= 0.05;
+      p.position += Offset((math.Random().nextDouble() - 0.5) * 2, 1.0);
+    }
+    _particles.removeWhere((p) => p.life <= 0);
   }
 
   Offset _calculateBezierPoint(double t) {
-    // 2차 베지어 공식: (1-t)^2*P0 + 2(1-t)t*P1 + t^2*P2
     final double u = 1 - t;
     final double tt = t * t;
     final double uu = u * u;
@@ -101,55 +98,62 @@ class _ProjectileAnimationState extends State<ProjectileAnimation>
   @override
   Widget build(BuildContext context) {
     if (_isHit) {
-      // 타격 시 폭발 이펙트 (Burst)
       return _buildBurstEffect();
     }
 
-    final t = _animation.value;
-    final pos = _calculateBezierPoint(t);
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        final t = _animation.value;
+        final pos = _calculateBezierPoint(t);
 
-    // 다음 지점을 미리 계산하여 회전 각도 결정 (진행 방향)
-    final nextT = (t + 0.01).clamp(0.0, 1.0);
-    final nextPos = _calculateBezierPoint(nextT);
-    final angle = math.atan2(nextPos.dy - pos.dy, nextPos.dx - pos.dx);
+        final nextT = (t + 0.01).clamp(0.0, 1.0);
+        final nextPos = _calculateBezierPoint(nextT);
+        final angle = math.atan2(nextPos.dy - pos.dy, nextPos.dx - pos.dx);
 
-    return Stack(
-      children: [
-        // 파티클 레이어
-        ..._particles.map(
-          (p) => Positioned(
-            left: p.position.dx,
-            top: p.position.dy,
-            child: Opacity(
-              opacity: p.life.clamp(0.0, 1.0),
-              child: Container(
-                width: p.size,
-                height: p.size,
-                decoration: const BoxDecoration(
-                  color: Colors.amber,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.orange, blurRadius: 4)],
+        return Stack(
+          children: [
+            // 파티클 레이어
+            ..._particles.map(
+              (p) => Positioned(
+                left: p.position.dx,
+                top: p.position.dy,
+                child: Opacity(
+                  opacity: p.life.clamp(0.0, 1.0),
+                  child: Container(
+                    width: p.size,
+                    height: p.size,
+                    decoration: const BoxDecoration(
+                      color: Colors.amber,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: Colors.orange, blurRadius: 4)],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-        // 발사체 본체 (마법 화살)
-        Positioned(
-          left: pos.dx,
-          top: pos.dy,
-          child: Transform.translate(
-            offset: const Offset(-15, -15),
-            child: Transform.rotate(
-              angle: angle,
-              child: CustomPaint(
-                size: const Size(60, 30),
-                painter: _ArrowPainter(),
+            // 발사체 본체 (마법 화살)
+            Positioned(
+              left: pos.dx,
+              top: pos.dy,
+              child: Transform(
+                // 하드웨어 가속 유도를 위한 identity matrix 적용
+                transform: Matrix4.identity(),
+                child: Transform.translate(
+                  offset: const Offset(-15, -15),
+                  child: Transform.rotate(
+                    angle: angle,
+                    child: CustomPaint(
+                      size: const Size(60, 30),
+                      painter: _ArrowPainter(),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -163,16 +167,19 @@ class _ProjectileAnimationState extends State<ProjectileAnimation>
           top: widget.endPos.dy - (50 * value),
           child: Opacity(
             opacity: 1.0 - value,
-            child: Container(
-              width: 100 * value,
-              height: 100 * value,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Colors.yellowAccent,
-                    Colors.orangeAccent.withValues(alpha: 0.0),
-                  ],
+            child: Transform(
+              transform: Matrix4.identity(),
+              child: Container(
+                width: 100 * value,
+                height: 100 * value,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.yellowAccent,
+                      Colors.orangeAccent.withValues(alpha: 0.0),
+                    ],
+                  ),
                 ),
               ),
             ),
