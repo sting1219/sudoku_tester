@@ -13,7 +13,7 @@ class RoomData {
   bool isExplored; // 탐험 여부 추가
   final Difficulty difficulty;
   final DungeonTheme theme;
-  final SudokuBoard board;
+  SudokuBoard board;
 
   // 수집 및 도감용 메타데이터
   final String artifactName;
@@ -43,6 +43,34 @@ class RoomData {
       artifactName: artifactName,
       artifactLore: artifactLore,
       artifactNumber: artifactNumber,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type.name,
+      'is_cleared': isCleared,
+      'is_explored': isExplored,
+      'difficulty': difficulty.name,
+      'theme': theme.name,
+      'board': board.toJson(),
+      'artifact_name': artifactName,
+      'artifact_lore': artifactLore,
+      'artifact_number': artifactNumber,
+    };
+  }
+
+  factory RoomData.fromJson(Map<String, dynamic> json) {
+    return RoomData(
+      type: RoomType.values.firstWhere((e) => e.name == json['type']),
+      isCleared: json['is_cleared'] ?? false,
+      isExplored: json['is_explored'] ?? false,
+      difficulty: Difficulty.fromName(json['difficulty']),
+      theme: DungeonTheme.allThemes.firstWhere((e) => e.name == json['theme']),
+      board: SudokuBoard.fromJson(json['board']),
+      artifactName: json['artifact_name'] ?? "",
+      artifactLore: json['artifact_lore'] ?? "",
+      artifactNumber: json['artifact_number'] ?? 0,
     );
   }
 }
@@ -180,5 +208,34 @@ class DungeonMap {
       currentX: currentX,
       currentY: currentY,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'width': width,
+      'height': height,
+      'theme': theme.name,
+      'current_x': currentX,
+      'current_y': currentY,
+      'grid': grid.map((row) => row.map((room) => room.toJson()).toList()).toList(),
+    };
+  }
+
+  factory DungeonMap.fromJson(Map<String, dynamic> json) {
+    final theme = DungeonTheme.allThemes.firstWhere(
+      (e) => e.name == json['theme'],
+      orElse: () => DungeonTheme.allThemes.first,
+    );
+    final map = DungeonMap._clone(
+      theme: theme,
+      width: json['width'] ?? 5,
+      height: json['height'] ?? 5,
+      currentX: json['current_x'] ?? 0,
+      currentY: json['current_y'] ?? 4,
+      grid: (json['grid'] as List)
+          .map((row) => (row as List).map((room) => RoomData.fromJson(room)).toList())
+          .toList(),
+    );
+    return map;
   }
 }

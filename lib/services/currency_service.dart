@@ -69,15 +69,15 @@ class CurrencyService extends ChangeNotifier {
     return 1.0 + (count * 0.01);
   }
 
-  void _saveAndNotify() {
+  Future<void> _saveAndNotify() async {
     if (_userData != null) {
-      LocalStorageService.saveUserData(_userData!);
+      await LocalStorageService.saveUserData(_userData!);
     }
     notifyListeners();
   }
 
   // 외부에서 명시적으로 저장을 요청할 때 사용
-  void saveCurrentData() {
-    _saveAndNotify();
+  Future<void> saveCurrentData() async {
+    await _saveAndNotify();
   }
 }

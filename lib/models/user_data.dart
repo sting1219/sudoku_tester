@@ -39,6 +39,7 @@ class UserStats {
   final Set<int> collectedIllustrationPieces; // 획득한 차원의 낱장(조각) 인덱스(1~9)
   final Map<int, int> killCountsByNumber; // 각 숫자별로 공격하여 몬스터를 처치한 횟수
   final Map<String, int> monsterKillCounts; // 몬스터 ID/이름 단위 처치 횟수
+  final Map<String, dynamic>? lastDungeonMap; // 마지막 플레이한 던전 맵 상태
 
   UserStats({
     this.totalGamesPlayed = 0,
@@ -59,6 +60,7 @@ class UserStats {
     Set<int>? collectedIllustrationPieces,
     Map<int, int>? killCountsByNumber,
     Map<String, int>? monsterKillCounts,
+    this.lastDungeonMap,
   }) : discoveredMonsterNames = discoveredMonsterNames ?? {},
        unlockedAchievementIds = unlockedAchievementIds ?? {},
        claimedAchievementIds = claimedAchievementIds ?? {},
@@ -89,6 +91,7 @@ class UserStats {
       collectedIllustrationPieces: Set<int>.from(collectedIllustrationPieces),
       killCountsByNumber: Map<int, int>.from(killCountsByNumber),
       monsterKillCounts: Map<String, int>.from(monsterKillCounts),
+      lastDungeonMap: lastDungeonMap != null ? Map<String, dynamic>.from(lastDungeonMap!) : null,
     );
   }
 
@@ -157,7 +160,8 @@ class UserStats {
           (json['monster_kill_counts'] as Map<String, dynamic>?)?.map(
             (k, v) => MapEntry(k, v as int),
           ) ??
-          {},
+           {},
+      lastDungeonMap: json['last_dungeon_map'],
     );
   }
 
@@ -179,12 +183,11 @@ class UserStats {
         (k, v) => MapEntry(k.toString(), v),
       ),
       'unlocked_artifacts': unlockedArtifacts.toList(),
-      'collected_illustration_pieces': collectedIllustrationPieces.toList(),
-      'kill_counts_by_number': killCountsByNumber.map(
-        (k, v) => MapEntry(k.toString(), v),
-      ),
+       'collected_illustration_pieces': collectedIllustrationPieces.toList(),
+      'kill_counts_by_number': killCountsByNumber.map((k, v) => MapEntry(k.toString(), v)),
       'unlocked_lost_journals': unlockedLostJournals.toList(),
       'monster_kill_counts': monsterKillCounts,
+      'last_dungeon_map': lastDungeonMap,
     };
   }
 
@@ -201,6 +204,13 @@ class UserStats {
     Set<String>? discoveredMonsterNames,
     Set<String>? unlockedAchievementIds,
     Set<String>? claimedAchievementIds,
+    Map<int, bool>? unlockedForbiddenBooks,
+    Set<String>? unlockedArtifacts,
+    Set<String>? unlockedLostJournals,
+    Set<int>? collectedIllustrationPieces,
+    Map<int, int>? killCountsByNumber,
+    Map<String, int>? monsterKillCounts,
+    Map<String, dynamic>? lastDungeonMap,
   }) {
     return UserStats(
       totalGamesPlayed: totalGamesPlayed ?? this.totalGamesPlayed,
@@ -212,14 +222,17 @@ class UserStats {
       noMissCount: noMissCount ?? this.noMissCount,
       activeTitle: activeTitle ?? this.activeTitle,
       unlockedTitles: unlockedTitles ?? this.unlockedTitles,
-      discoveredMonsterNames:
-          discoveredMonsterNames ??
-          Set<String>.from(this.discoveredMonsterNames),
-      unlockedAchievementIds:
-          unlockedAchievementIds ??
-          Set<String>.from(this.unlockedAchievementIds),
-      claimedAchievementIds:
-          claimedAchievementIds ?? Set<String>.from(this.claimedAchievementIds),
+      discoveredMonsterNames: discoveredMonsterNames ?? this.discoveredMonsterNames,
+      unlockedAchievementIds: unlockedAchievementIds ?? this.unlockedAchievementIds,
+      claimedAchievementIds: claimedAchievementIds ?? this.claimedAchievementIds,
+      unlockedForbiddenBooks: unlockedForbiddenBooks ?? this.unlockedForbiddenBooks,
+      unlockedArtifacts: unlockedArtifacts ?? this.unlockedArtifacts,
+      unlockedLostJournals: unlockedLostJournals ?? this.unlockedLostJournals,
+      collectedIllustrationPieces:
+          collectedIllustrationPieces ?? this.collectedIllustrationPieces,
+      killCountsByNumber: killCountsByNumber ?? this.killCountsByNumber,
+      monsterKillCounts: monsterKillCounts ?? this.monsterKillCounts,
+      lastDungeonMap: lastDungeonMap ?? this.lastDungeonMap,
     );
   }
 }

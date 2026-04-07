@@ -23,6 +23,13 @@ enum Difficulty {
     required this.label,
     required this.rpgGrade,
   });
+
+  static Difficulty fromName(String name) {
+    return Difficulty.values.firstWhere(
+      (e) => e.name == name,
+      orElse: () => Difficulty.medium,
+    );
+  }
 }
 
 class SudokuBoard {
@@ -77,6 +84,49 @@ class SudokuBoard {
     newBoard.mistakes = mistakes;
     newBoard.score = score;
     return newBoard;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'initial_grid': initialGrid.map((r) => List<int>.from(r)).toList(),
+      'solution': solution.map((r) => List<int>.from(r)).toList(),
+      'current_grid': currentGrid.map((r) => List<int>.from(r)).toList(),
+      'error_map': errorMap.map((r) => List<bool>.from(r)).toList(),
+      'notes': notes.map((r) => r.map((c) => List<int>.from(c)).toList()).toList(),
+      'score_awarded': scoreAwarded.map((r) => List<bool>.from(r)).toList(),
+      'mistakes': mistakes,
+      'score': score,
+      'difficulty': difficulty.name,
+      'seed': seed,
+    };
+  }
+
+  factory SudokuBoard.fromJson(Map<String, dynamic> json) {
+    final board = SudokuBoard(
+      difficulty: Difficulty.fromName(json['difficulty'] ?? 'medium'),
+      seed: json['seed'],
+    );
+    board.initialGrid = (json['initial_grid'] as List)
+        .map((r) => List<int>.from(r))
+        .toList();
+    board.solution = (json['solution'] as List)
+        .map((r) => List<int>.from(r))
+        .toList();
+    board.currentGrid = (json['current_grid'] as List)
+        .map((r) => List<int>.from(r))
+        .toList();
+    board.errorMap = (json['error_map'] as List)
+        .map((r) => List<bool>.from(r))
+        .toList();
+    board.notes = (json['notes'] as List)
+        .map((r) => (r as List).map((c) => List<int>.from(c)).toList())
+        .toList();
+    board.scoreAwarded = (json['score_awarded'] as List)
+        .map((r) => List<bool>.from(r))
+        .toList();
+    board.mistakes = json['mistakes'] ?? 0;
+    board.score = json['score'] ?? 0;
+    return board;
   }
 
   // --- Board Generation Algorithms ---

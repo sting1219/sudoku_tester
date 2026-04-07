@@ -15,10 +15,12 @@ class _MonsterStatusState extends State<MonsterStatus>
   late AnimationController _flashController;
   late AnimationController _shakeController;
   late AnimationController _shudderController;
+  late AnimationController _deathController;
 
   late Animation<Color?> _colorAnimation;
   late Animation<double> _shakeAnimation;
   late Animation<double> _shudderAnimation;
+  late Animation<double> _deathAnimation;
 
   int _lastKnownHp = 0;
 
@@ -90,18 +92,32 @@ class _MonsterStatusState extends State<MonsterStatus>
         ]).animate(
           CurvedAnimation(parent: _shudderController, curve: Curves.linear),
         );
+
+    // 4. 사망(FadeOut) 컨트롤러 (500ms)
+    _deathController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _deathAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _deathController, curve: Curves.easeOut),
+    );
   }
 
   @override
   void didUpdateWidget(covariant MonsterStatus oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.monster.currentHp < _lastKnownHp) {
-      // 데미지 입었을 때 모든 애니메이션 동시 실행
-      _flashController
-          .forward(from: 0.0)
-          .then((_) => _flashController.reverse());
-      _shakeController.forward(from: 0.0);
-      _shudderController.forward(from: 0.0);
+      if (widget.monster.currentHp <= 0) {
+        // 체력이 0이 되면 사망 애니메이션만 재생
+        _deathController.forward();
+      } else {
+        // 일반 피격 시 효과 재생
+        _flashController
+            .forward(from: 0.0)
+            .then((_) => _flashController.reverse());
+        _shakeController.forward(from: 0.0);
+        _shudderController.forward(from: 0.0);
+      }
     }
     _lastKnownHp = widget.monster.currentHp;
   }
@@ -111,6 +127,7 @@ class _MonsterStatusState extends State<MonsterStatus>
     _flashController.dispose();
     _shakeController.dispose();
     _shudderController.dispose();
+    _deathController.dispose();
     super.dispose();
   }
 
@@ -155,10 +172,12 @@ class _MonsterStatusState extends State<MonsterStatus>
             ),
             const SizedBox(height: 8),
 
-            // 몬스터 이미지 및 셰이크/플래시 효과
-            AnimatedBuilder(
-              animation: Listenable.merge([_shakeController, _flashController]),
-              builder: (context, child) {
+            // 몬스터 이미지 및 셰이크/플래시/사망 효과
+            FadeTransition(
+              opacity: _deathAnimation,
+              child: AnimatedBuilder(
+                animation: Listenable.merge([_shakeController, _flashController]),
+                builder: (context, child) {
                 return Transform.translate(
                   offset: Offset(_shakeAnimation.value, 0),
                   child: Container(
@@ -192,6 +211,7 @@ class _MonsterStatusState extends State<MonsterStatus>
                   ),
                 );
               },
+            ),
             ),
 
             const SizedBox(height: 12),
