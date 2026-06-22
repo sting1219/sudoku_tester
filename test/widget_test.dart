@@ -5,26 +5,27 @@ import 'package:flutter_test/flutter_test.dart';
 
 // main.dart에서 정의한 SudokuApp을 임포트합니다.
 import 'package:sudoku_game/main.dart'; 
+import 'package:sudoku_game/models/user_data.dart';
 
 void main() {
-  // 테스트 이름을 'Sudoku App Smoke Test'로 변경합니다.
   testWidgets('Sudoku App Smoke Test', (WidgetTester tester) async {
-    
-    // 1. 앱을 빌드하고 프레임을 그립니다.
-    // MyApp 대신 우리가 정의한 SudokuApp을 사용합니다.
-    await tester.pumpWidget(const SudokuApp());
+    await tester.pumpWidget(SudokuApp(initialUserData: UserData.initial()));
 
     // 2. 화면에 스도쿠 앱의 주요 요소들이 정상적으로 로드되었는지 확인합니다.
     
-    // AppBar의 제목이 '스도쿠 게임'인지 확인
-    expect(find.text('스도쿠 게임'), findsOneWidget); 
+    // AppBar의 제목이 '월드 맵'인지 확인
+    expect(find.text('월드 맵'), findsOneWidget); 
 
-    // 스도쿠 보드가 9x9 그리드이므로, 총 81개의 셀이 있어야 합니다.
-    // 여기서는 가장 간단하게 빈 셀(0)을 나타내는 빈 텍스트('')가 있는지 확인해봅니다.
-    // (완전한 테스트는 아니지만, 앱이 깨지지 않고 실행되었는지 확인하는 Smoke Test로는 충분합니다.)
+    // '고요한 시작의 숲' 스테이지 탭하여 스도쿠 화면으로 진입
+    final stageFinder = find.text('고요한 시작의 숲');
+    expect(stageFinder, findsOneWidget);
+    await tester.tap(stageFinder);
+    await tester.pumpAndSettle();
+
+    // 3. 스도쿠 보드가 화면에 나타났는지 확인 (예: Container)
     expect(find.byType(Container), findsWidgets); 
     
-    // 3. 키패드에서 1을 입력하는 버튼(텍스트 '1')이 있는지 확인합니다.
+    // 4. 키패드에서 1을 입력하는 버튼(텍스트 '1')이 있는지 확인합니다.
     expect(find.text('1'), findsWidgets); 
 
     // 4. 앱이 성공적으로 로드된 후 에러가 발생하지 않았는지 확인합니다.

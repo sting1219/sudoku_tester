@@ -1,8 +1,11 @@
 import 'dart:convert';
-import 'package:web/web.dart' as web;
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dungeon.dart';
 import 'item_model.dart';
 import '../data/lore_data.dart';
+
+String _encodeJsonData(Map<String, dynamic> data) => jsonEncode(data);
 
 class GameSettings {
   bool autoEraserEnabled;
@@ -39,7 +42,9 @@ class UserStats {
   final Set<int> collectedIllustrationPieces; // 획득한 차원의 낱장(조각) 인덱스(1~9)
   final Map<int, int> killCountsByNumber; // 각 숫자별로 공격하여 몬스터를 처치한 횟수
   final Map<String, int> monsterKillCounts; // 몬스터 ID/이름 단위 처치 횟수
+  final Set<String> obtainedMonsterCards; // 획득한 몬스터 카드 ID/이름 목록
   final Map<String, dynamic>? lastDungeonMap; // 마지막 플레이한 던전 맵 상태
+  final int totalRoomsCleared; // 누적 클리어한 방 개수 (스테이지 계산용)
 
   UserStats({
     this.totalGamesPlayed = 0,
@@ -60,7 +65,9 @@ class UserStats {
     Set<int>? collectedIllustrationPieces,
     Map<int, int>? killCountsByNumber,
     Map<String, int>? monsterKillCounts,
+    Set<String>? obtainedMonsterCards,
     this.lastDungeonMap,
+    this.totalRoomsCleared = 0,
   }) : discoveredMonsterNames = discoveredMonsterNames ?? {},
        unlockedAchievementIds = unlockedAchievementIds ?? {},
        claimedAchievementIds = claimedAchievementIds ?? {},
@@ -69,7 +76,8 @@ class UserStats {
        unlockedLostJournals = unlockedLostJournals ?? {},
        collectedIllustrationPieces = collectedIllustrationPieces ?? {},
        killCountsByNumber = killCountsByNumber ?? {},
-       monsterKillCounts = monsterKillCounts ?? {};
+       monsterKillCounts = monsterKillCounts ?? {},
+       obtainedMonsterCards = obtainedMonsterCards ?? {};
 
   UserStats clone() {
     return UserStats(
@@ -91,7 +99,9 @@ class UserStats {
       collectedIllustrationPieces: Set<int>.from(collectedIllustrationPieces),
       killCountsByNumber: Map<int, int>.from(killCountsByNumber),
       monsterKillCounts: Map<String, int>.from(monsterKillCounts),
+      obtainedMonsterCards: Set<String>.from(obtainedMonsterCards),
       lastDungeonMap: lastDungeonMap != null ? Map<String, dynamic>.from(lastDungeonMap!) : null,
+      totalRoomsCleared: totalRoomsCleared,
     );
   }
 
@@ -161,7 +171,13 @@ class UserStats {
             (k, v) => MapEntry(k, v as int),
           ) ??
            {},
+      obtainedMonsterCards:
+          (json['obtained_monster_cards'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toSet() ??
+          {},
       lastDungeonMap: json['last_dungeon_map'],
+      totalRoomsCleared: json['total_rooms_cleared'] ?? 0,
     );
   }
 
@@ -187,7 +203,9 @@ class UserStats {
       'kill_counts_by_number': killCountsByNumber.map((k, v) => MapEntry(k.toString(), v)),
       'unlocked_lost_journals': unlockedLostJournals.toList(),
       'monster_kill_counts': monsterKillCounts,
+      'obtained_monster_cards': obtainedMonsterCards.toList(),
       'last_dungeon_map': lastDungeonMap,
+      'total_rooms_cleared': totalRoomsCleared,
     };
   }
 
@@ -210,7 +228,9 @@ class UserStats {
     Set<int>? collectedIllustrationPieces,
     Map<int, int>? killCountsByNumber,
     Map<String, int>? monsterKillCounts,
+    Set<String>? obtainedMonsterCards,
     Map<String, dynamic>? lastDungeonMap,
+    int? totalRoomsCleared,
   }) {
     return UserStats(
       totalGamesPlayed: totalGamesPlayed ?? this.totalGamesPlayed,
@@ -232,7 +252,9 @@ class UserStats {
           collectedIllustrationPieces ?? this.collectedIllustrationPieces,
       killCountsByNumber: killCountsByNumber ?? this.killCountsByNumber,
       monsterKillCounts: monsterKillCounts ?? this.monsterKillCounts,
+      obtainedMonsterCards: obtainedMonsterCards ?? this.obtainedMonsterCards,
       lastDungeonMap: lastDungeonMap ?? this.lastDungeonMap,
+      totalRoomsCleared: totalRoomsCleared ?? this.totalRoomsCleared,
     );
   }
 }
@@ -313,6 +335,7 @@ class UserData {
 
   UserStats stats;
   GameSettings settings;
+  int lastUpdated;
 
   UserData({
     this.level = 1,
@@ -325,6 +348,7 @@ class UserData {
     List<String>? unlockedSkillIds,
     UserStats? stats,
     GameSettings? settings,
+    this.lastUpdated = 0,
   }) : inventory = inventory ?? [],
        unlockedSkillIds = unlockedSkillIds ?? [],
        stats = stats ?? UserStats(),
@@ -343,6 +367,7 @@ class UserData {
       unlockedSkillIds: List<String>.from(unlockedSkillIds),
       stats: stats.clone(),
       settings: settings.clone(),
+      lastUpdated: lastUpdated,
     )..totalXpNeeded = totalXpNeeded;
   }
 
@@ -391,6 +416,7 @@ class UserData {
       settings: json['settings'] != null
           ? GameSettings.fromJson(json['settings'])
           : GameSettings(),
+      lastUpdated: json['last_updated'] ?? 0,
     );
   }
 
@@ -406,6 +432,7 @@ class UserData {
     'unlocked_skill_ids': unlockedSkillIds,
     'stats': stats.toJson(),
     'settings': settings.toJson(),
+    'last_updated': lastUpdated,
   };
 
   factory UserData.initial() => UserData();
@@ -415,19 +442,31 @@ class LocalStorageService {
   static const String _userDataKey = 'sudokuUserData';
 
   static Future<UserData> loadUserData() async {
-    final String? userDataJson = web.window.localStorage.getItem(_userDataKey);
-    if (userDataJson != null) {
-      try {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? userDataJson = prefs.getString(_userDataKey);
+      if (userDataJson != null) {
         return UserData.fromJson(jsonDecode(userDataJson));
-      } catch (e) {
-        return UserData.initial();
       }
+    } catch (e) {
+      // SharedPreferences load error handling
     }
     return UserData.initial();
   }
 
   static Future<void> saveUserData(UserData userData) async {
-    final String jsonString = jsonEncode(userData.toJson());
-    web.window.localStorage.setItem(_userDataKey, jsonString);
+    // 저장 시 타임스탬프 업데이트
+    userData.lastUpdated = DateTime.now().millisecondsSinceEpoch;
+    
+    // 렉 방지를 위해 jsonEncode를 별도 Isolate(compute)에서 비동기 처리
+    final Map<String, dynamic> data = userData.toJson();
+    final String jsonString = await compute(_encodeJsonData, data);
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userDataKey, jsonString);
+    } catch (e) {
+      // SharedPreferences save error handling
+    }
   }
 }

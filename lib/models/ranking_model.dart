@@ -1,7 +1,7 @@
 // lib/models/ranking_model.dart
 
 import 'dart:convert';
-import 'package:web/web.dart' as web;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RankingEntry {
   final String playerName;
@@ -61,14 +61,28 @@ class RankingManager {
     return jsonEncode(rankings.map((e) => e.toJson()).toList());
   }
 
+  static Future<List<RankingEntry>> loadRankings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? jsonStr = prefs.getString(_rankingKey);
+      return parseRankings(jsonStr);
+    } catch (e) {
+      return [];
+    }
+  }
+
   static Future<void> saveRanking(RankingEntry entry) async {
-    final String? jsonStr = web.window.localStorage.getItem(_rankingKey);
-    final rankings = parseRankings(jsonStr);
+    final rankings = await loadRankings();
     rankings.add(entry);
     // 상위 10개만 유지
     rankings.sort((a, b) => b.score.compareTo(a.score));
     if (rankings.length > 10) rankings.removeLast();
 
-    web.window.localStorage.setItem(_rankingKey, encodeRankings(rankings));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_rankingKey, encodeRankings(rankings));
+    } catch (e) {
+      // SharedPreferences save error handling
+    }
   }
 }

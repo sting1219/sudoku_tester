@@ -9,12 +9,20 @@ class Artifact {
   final String name;
   final IconData icon;
   final String description;
+  final double atkMultiplier; // 공격력 배수 (예: 1.1 = +10%)
+  final double hpMultiplier;  // 체력 배수
+  final double goldMultiplier; // 골드 획득 배수
+  final int hpRegen;          // 정답 시 추가 HP 회복량
 
   const Artifact({
     required this.id,
     required this.name,
     required this.icon,
     required this.description,
+    this.atkMultiplier = 1.0,
+    this.hpMultiplier = 1.0,
+    this.goldMultiplier = 1.0,
+    this.hpRegen = 0,
   });
 }
 
@@ -44,6 +52,7 @@ class CollectionTemplates {
       icon: Icons.access_time,
       description:
           "[감정평가서 제001호]\n이 시계는 시간을 맞추는 것이 아니라 모순이 일어났던 정확한 '오차의 시간'을 멈춰서 기록하는 특수한 장치입니다. 초침이 정각이 아닌 비합리적 각도에서 영원히 멈춰있습니다. 과거 대정화가가 마지막 원주율을 계산할 때 사용했다는 전설이 있습니다.",
+      atkMultiplier: 1.05, // 공격력 +5%
     ),
     Artifact(
       id: "art_02",
@@ -51,6 +60,7 @@ class CollectionTemplates {
       icon: Icons.straighten,
       description:
           "[감정평가서 제043호]\n정원의 기하학을 설계할 때 쓰였던 정밀 측정 도구입니다. 측정자가 자신이 믿고 있던 완벽한 구형이 사실 일그러져 있다는 충격적인 진실을 측정한 순간, 공포에 질려 스스로 캘리퍼스의 허리를 부러트려버렸습니다.",
+      atkMultiplier: 1.1, // 공격력 +10%
     ),
     Artifact(
       id: "art_03",
@@ -58,6 +68,7 @@ class CollectionTemplates {
       icon: Icons.wb_incandescent,
       description:
           "[감정평가서 제077호]\n심연에 도서관을 세우기 위해 가져갔던 불빛입니다. 불꽃 자체가 열역학 법칙을 거술러 춤추며, 그 빛에 비친 그림자는 본체와 전혀 다른 모양을 띠는 현상을 관측할 수 있습니다.",
+      hpRegen: 5, // 정답 시 HP 5 추가 회복
     ),
     Artifact(
       id: "art_04",
@@ -65,6 +76,7 @@ class CollectionTemplates {
       icon: Icons.colorize,
       description:
           "[감정평가서 제102호]\n잉크 대신 푸른 마력이 담겨있던 병. 이 병의 잉크로 종이에 수식을 적으면, 그 수식은 종이 위에서 문자들의 군집으로 변해 스스로 기어다녔다고 합니다. 지금은 한 방울의 푸른 얼룩만 말라붙어 있습니다.",
+      goldMultiplier: 1.2, // 골드 획득 +20%
     ),
     Artifact(
       id: "art_05",
@@ -72,6 +84,7 @@ class CollectionTemplates {
       icon: Icons.explore,
       description:
           "[감정평가서 제155호]\n북쪽을 가리키는 대신 '가장 풀기 어려운 미해결 난제'가 있는 방향을 향해 빙글빙글 도는 끔찍한 발명품입니다. 많은 학자들이 이 바늘 끝을 쫓다가 영영 정원으로 돌아오지 못했습니다.",
+      atkMultiplier: 1.15, // 공격력 +15%
     ),
     Artifact(
       id: "art_06",
@@ -79,6 +92,7 @@ class CollectionTemplates {
       icon: Icons.public,
       description:
           "[감정평가서 제210호]\n둥근 구가 아니라 복잡한 다면체로 구성된 지도 모형. 우리의 차원이 아닌, 논리만이 살아 숨쉬는 다른 평행우주의 지형 정보를 담고 있습니다. 특정 각도에서 보면 지형이 수열의 형태를 띕니다.",
+      hpMultiplier: 1.2, // 체력 +20%
     ),
     Artifact(
       id: "art_07",
@@ -86,6 +100,7 @@ class CollectionTemplates {
       icon: Icons.wine_bar,
       description:
           "[감정평가서 제299호]\n잔의 곡선이 완벽한 피보나치 수열을 기반으로 만들어졌습니다. 아무리 독주를 부어도 잔의 표면에 닿는 순간 가장 안정적인 단맛의 알칼리성 용액으로 변환시켜 줍니다.",
+      hpRegen: 10, // 정답 시 HP 10 추가 회복
     ),
     Artifact(
       id: "art_08",
@@ -93,6 +108,7 @@ class CollectionTemplates {
       icon: Icons.calculate,
       description:
           "[감정평가서 제341호]\n알 수 없는 미지의 목재로 깎아 만든 주판. 알을 튕기는 소리를 듣는 것만으로 대뇌에 고등 수학의 계산식이 직접 전송되는 사기적인 아티팩트였으나, 현재는 절반 이상의 알이 오답 슬라임에게 녹아내렸습니다.",
+      goldMultiplier: 1.5, // 골드 획득 +50%
     ),
     Artifact(
       id: "art_09",
@@ -100,6 +116,7 @@ class CollectionTemplates {
       icon: Icons.diamond,
       description:
           "[감정평가서 제404호]\n이 투명한 프리즘을 통해 태양광을 비추면 빨주노초파남보가 아닌, 1,2,3,4,5,6,7,8,9의 아홉 가지 숫자 파동이 벽면에 투사됩니다. 빛이 곧 정보임을 증명하는 고대의 보석입니다.",
+      atkMultiplier: 1.3, // 공격력 +30%
     ),
     Artifact(
       id: "art_10",
@@ -107,6 +124,7 @@ class CollectionTemplates {
       icon: Icons.music_note,
       description:
           "[감정평가서 제512호]\n입력을 불어넣으면 소리가 아니라, 주파수를 기하학 문양으로 형상화하여 공기 중에 띄우는 악기. 불협화음을 내면 가시 덩굴이 소환되어 악사를 교살한다는 무서운 저주가 걸려 구멍이 납으로 막혀 있습니다.",
+      hpMultiplier: 1.5, // 체력 +50%
     ),
   ];
 

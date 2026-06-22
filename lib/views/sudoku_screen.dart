@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui'; // ImageFilter 사용을 위해 추가
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/sudoku_board.dart';
 import '../models/user_data.dart';
-import '../models/ranking_model.dart';
 import '../models/combat_data.dart';
 import '../models/dungeon.dart';
 import '../models/dungeon_theme.dart';
@@ -16,6 +14,7 @@ import '../services/achievement_service.dart';
 import '../services/currency_service.dart';
 import '../services/collection_service.dart';
 import '../services/game_state_manager.dart';
+import '../services/artifact_service.dart'; // 유물 서비스 추가
 
 import '../widgets/minimap.dart';
 import '../widgets/number_keypad.dart';
@@ -24,7 +23,13 @@ import '../widgets/action_buttons.dart';
 import '../widgets/monster_status.dart';
 import '../widgets/combat_log.dart';
 import '../widgets/sudoku_grid.dart';
+import '../widgets/new_card_dialog.dart';
 import '../widgets/particle_overlay.dart';
+import '../widgets/damage_popup.dart';
+import '../services/localization_service.dart';
+import '../data/monster_data.dart';
+import '../data/artifact_data.dart';
+import '../services/stage_manager.dart';
 import '../src/ui/screens/wiki_screen.dart';
 import '../widgets/purification_gauge.dart';
 import '../widgets/pause_overlay.dart';
@@ -35,6 +40,7 @@ import '../utils/app_styles.dart';
 import '../models/skill_manager.dart';
 import '../models/item_model.dart';
 import 'inventory_screen.dart';
+import '../widgets/victory_dialog.dart';
 
 // GameState class is removed since undo feature is no longer supported.
 
@@ -73,12 +79,12 @@ class _SudokuScreenState extends State<SudokuScreen>
   bool _isSuccessAnimation = false;
   bool _isDungeonCleared = false;
   bool _showMoveButtons = false;
-  bool _showPurifiedOverlay = false;
+  final bool _showPurifiedOverlay = false;
   bool _isInitialized = false;
 
   int? _dailySeed;
   double _comboMultiplier = 1.0;
-  List<SudokuEvent> _activeEvents = [];
+  final List<SudokuEvent> _activeEvents = [];
   late AnimationController _comboAnimationController;
   late Animation<double> _comboScaleAnimation;
 
@@ -94,8 +100,8 @@ class _SudokuScreenState extends State<SudokuScreen>
   List<Map<String, int>> _currentConflicts = [];
   int? _errorRow;
   int? _errorCol;
-  double _conflictAnimationValue = 0.0;
   String? _errorExplanation;
+  double _conflictAnimationValue = 0.0;
   Timer? _errorResetTimer;
   Timer? _saveDebounceTimer;
   
@@ -110,10 +116,19 @@ class _SudokuScreenState extends State<SudokuScreen>
   late ValueNotifier<List<String>> _combatLogNotifier;
   late ValueNotifier<Map<String, int>?> _flashingCellNotifier;
 
+  // 보스 패턴 관련
+  final Set<String> _foggyCells = {};
+  Timer? _bossSkillTimer;
+  int _currentWorldIndex = 0;
+
+  final List<DamagePopupData> _damagePopups = [];
+
   final List<Widget> _projectiles = [];
   final List<Widget> _damageEffects = [];
   // final GlobalKey _monsterKey = GlobalKey();
   final GlobalKey _gridKey = GlobalKey();
+  Key _gridUniqueKey = UniqueKey();
+
 
   @override
   void initState() {
@@ -339,6 +354,9 @@ class _SudokuScreenState extends State<SudokuScreen>
         _userData.stats.discoveredMonsterNames.add(_currentMonster.name);
       }
 
+      // 신규 게임 시 위젯 강제 리빌드를 위한 키 갱신
+      _gridUniqueKey = UniqueKey();
+
       // 매니저 상태와 동기화
       _gameState.setDungeonMap(_dungeonMap);
       _gameState.updateMonster(_currentMonster);
@@ -456,13 +474,29 @@ class _SudokuScreenState extends State<SudokuScreen>
     }
 
     if (isCorrectInput && number != 0) {
-      int damageDealt = GameController.calculateDamage(
+      // 유물 보너스 계산
+      final artifactBonuses = ArtifactService().calculateTotalBonuses(_userData);
+      final double atkMult = artifactBonuses['atkMultiplier'] ?? 1.0;
+      final int hpRegenBonus = artifactBonuses['hpRegen']?.toInt() ?? 0;
+
+      int unlockedCount = CollectionService().totalUnlockedCount;
+      int baseDamageDealt = GameController.calculateDamage(
         number,
         _playerCombatStats,
         _getCurrentSudokuBoard().difficulty,
+        unlockedCount,
       );
+      
+      // 유물 공격력 배수 적용
+      int damageDealt = (baseDamageDealt * atkMult).toInt();
       double damageValue = damageDealt.toDouble();
       String logMessage = "$number를 맞혔습니다!";
+
+      // 정답 시 HP 회복 (기본 + 유물 보너스)
+      if (hpRegenBonus > 0) {
+        _playerStatsNotifier.value = _playerStatsNotifier.value.heal(hpRegenBonus);
+        _addCombatLog("✨ 유물 효과로 HP $hpRegenBonus 회복!");
+      }
 
       if (_lastCorrectEntryTime != null &&
           DateTime.now().difference(_lastCorrectEntryTime!).inSeconds < 5) {
@@ -477,6 +511,14 @@ class _SudokuScreenState extends State<SudokuScreen>
         _comboMultiplier = 1.0;
       }
       _lastCorrectEntryTime = DateTime.now();
+
+      // 정답을 맞혔으므로 안개가 있었다면 제거
+      if (_foggyCells.contains("$currentRow,$currentCol")) {
+        setState(() {
+          _foggyCells.remove("$currentRow,$currentCol");
+          _addCombatLog("✨ 안개가 걷혔습니다!");
+        });
+      }
 
       // 콤보 리스너 업데이트
       _comboNotifier.value = _comboCount;
@@ -527,7 +569,11 @@ class _SudokuScreenState extends State<SudokuScreen>
       _triggerErrorEffects(currentRow, currentCol, number);
       _addCombatLog("오답입니다! 실수 횟수: $_currentMistakes");
 
-      final int damageTaken = _currentMonster.attackPower;
+      int unlockedCount = CollectionService().totalUnlockedCount;
+      final int damageTaken = GameController.calculatePenalty(
+        _currentMonster.attackPower,
+        unlockedCount,
+      );
       setState(() {
         _playerCombatStats = _playerCombatStats.copyWith(
           currentHp: (_playerCombatStats.currentHp - damageTaken).clamp(
@@ -561,7 +607,11 @@ class _SudokuScreenState extends State<SudokuScreen>
     _gameState.updateCombo(_comboCount);
     _gameState.updatePlayerStats(_playerCombatStats);
     _gameState.updateMonster(_currentMonster);
+
+    // 숫자를 입력할 때마다 디바운싱된 저장 로직 실행
+    _saveGlobalDataDebounced();
   }
+
 
   void _showLevelUpDialog() {
     showDialog(
@@ -722,6 +772,7 @@ class _SudokuScreenState extends State<SudokuScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _applyHitResult(row, col, damageDealt, inputNumber);
       _triggerParticleEffect(row, col);
+      _addDamagePopup(row, col, damageDealt);
     });
   }
 
@@ -874,6 +925,26 @@ class _SudokuScreenState extends State<SudokuScreen>
     ParticleOverlay.show(context, globalCenter);
   }
 
+  void _addDamagePopup(int row, int col, int damage) {
+    final RenderBox? gridBox =
+        _gridKey.currentContext?.findRenderObject() as RenderBox?;
+    if (gridBox == null || !mounted) return;
+
+    double cellSize = gridBox.size.width / 9;
+    // 격자의 좌상단 기준 로컬 좌표 계산
+    Offset localCenter = Offset((col + 0.5) * cellSize, (row + 0.5) * cellSize);
+    
+    setState(() {
+      _damagePopups.add(DamagePopupData(
+        damage: damage,
+        position: localCenter,
+        combo: _comboCount,
+        timestamp: DateTime.now(),
+        key: UniqueKey(),
+      ));
+    });
+  }
+
 
 
   void _applyMonsterDefeatRewards() async {
@@ -884,6 +955,11 @@ class _SudokuScreenState extends State<SudokuScreen>
     final int initialUserLevel = _userData.level;
     CurrencyService().addGold(_currentMonster.rewardGold);
     _userData.addXp(_currentMonster.rewardXp);
+
+    // 방 클리어 횟수 증가 (스테이지 진행)
+    _userData.stats = _userData.stats.copyWith(
+      totalRoomsCleared: _userData.stats.totalRoomsCleared + 1,
+    );
 
     if (_userData.level > initialUserLevel) {
       final int levelsGained = _userData.level - initialUserLevel;
@@ -916,19 +992,104 @@ class _SudokuScreenState extends State<SudokuScreen>
       },
     );
 
+    // 몬스터 처치 기록 업데이트 (도감 해금 기본 조건)
+    CollectionService().recordMonsterKill(_currentMonster.name);
+
+    // 몬스터 카드 15% 드롭 판정
+    CollectionService().tryDropMonsterCard(
+      _currentMonster.name,
+      onDrop: () {
+        _addCombatLog("✨ 새로운 몬스터 카드 [${_currentMonster.name}] 획득!");
+        final monsterEntry = MonsterData.monsters.firstWhere(
+          (m) => m.name == _currentMonster.name,
+          orElse: () => MonsterData.monsters.first,
+        );
+        NewCardDialog.show(context, monsterEntry);
+      },
+    );
+
     await _saveGlobalData();
   }
 
   void _loadNextMonster() {
+    _bossSkillTimer?.cancel();
+    _foggyCells.clear();
+
     setState(() {
-      var nextMonster = MonsterTemplates.getMonsterForRoom(
-        _dungeonMap.currentRoom.type,
-      );
+      Monster nextMonster;
+      // StageManager를 통해 현재 방 번호에 맞는 몬스터 결정
+      if (StageManager().isBossStage) {
+        nextMonster = MonsterTemplates.getMonsterForTheme(
+          RoomType.boss,
+          StageManager().currentWorldTheme.name,
+          _userData.level,
+        );
+      } else {
+        nextMonster = MonsterTemplates.getMonsterForTheme(
+          RoomType.normal,
+          StageManager().currentWorldTheme.name,
+          _userData.level,
+        );
+      }
+
       if (nextMonster.name == "없음" || nextMonster.maxHp <= 0) {
         nextMonster = MonsterTemplates.numberSlime();
       }
       _currentMonster = nextMonster;
+      _monsterNotifier.value = _currentMonster;
       _addCombatLog("야생의 ${_currentMonster.name}이(가) 나타났다!");
+
+      if (_currentMonster.isBoss) {
+        _startBossFogSkill();
+      }
+
+      _checkWorldChange();
+    });
+  }
+
+  void _checkWorldChange() {
+    int worldIdx = StageManager().currentWorldIndex;
+    if (_currentWorldIndex != worldIdx) {
+      _currentWorldIndex = worldIdx;
+      _addCombatLog("✨ 새로운 지역 [${StageManager().worldName}]에 진입했습니다!");
+      // BGM 교체 및 배경 이미지 변경 이벤트 처리 가능
+      SoundManager.instance.playVictorySound(); // 임시 알림음
+    }
+  }
+
+  void _startBossFogSkill() {
+    _bossSkillTimer?.cancel();
+    _bossSkillTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (!mounted || !_currentMonster.isBoss || _currentMonster.isDefeated()) {
+        timer.cancel();
+        return;
+      }
+      _applyBossFogSkill();
+    });
+  }
+
+  void _applyBossFogSkill() {
+    final board = _getCurrentSudokuBoard();
+    List<String> emptyCells = [];
+    for (int r = 0; r < 9; r++) {
+      for (int c = 0; c < 9; c++) {
+        if (board.currentGrid[r][c] == 0 && !_foggyCells.contains("$r,$c")) {
+          emptyCells.add("$r,$c");
+        }
+      }
+    }
+
+    if (emptyCells.isEmpty) return;
+
+    // 보스 체력이 50% 이하일 때 안개 개수 증가
+    int fogCount = (_currentMonster.currentHp < _currentMonster.maxHp * 0.5) ? 5 : 3;
+    emptyCells.shuffle();
+    
+    setState(() {
+      for (int i = 0; i < fogCount && i < emptyCells.length; i++) {
+        _foggyCells.add(emptyCells[i]);
+      }
+      _addCombatLog("🌫️ 보스가 안개를 소환하여 시야를 방해합니다!");
     });
   }
 
@@ -946,18 +1107,77 @@ class _SudokuScreenState extends State<SudokuScreen>
           textAlign: TextAlign.center,
         ),
         actions: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _createNewGame();
-              },
-              child: const Text("다시 도전"),
-            ),
+          Column(
+            children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.play_circle_fill),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orangeAccent,
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size(200, 45),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showAdAndRevive();
+                },
+                label: Text(L10n.t('revive_ad')),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _createNewGame();
+                },
+                child: Text(
+                  L10n.t('restart'),
+                  style: const TextStyle(color: Colors.white54),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  void _showAdAndRevive() async {
+    if (!mounted) return;
+
+    // 광고 시청 연출 (로딩 다이얼로그)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.black87,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.orangeAccent),
+            const SizedBox(height: 20),
+            Text(L10n.t('reviving'), style: const TextStyle(color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+
+    // 2초간 광고 시청 시뮬레이션
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+    Navigator.pop(context); // 로딩 다이얼로그 닫기
+
+    setState(() {
+      // HP 100% 회복
+      _playerCombatStats = _playerCombatStats.copyWith(
+        currentHp: _playerCombatStats.maxHp,
+      );
+      _playerStatsNotifier.value = _playerCombatStats;
+      
+      // 타이머 재시작
+      _startTimer();
+      
+      _addCombatLog("💖 ${L10n.t('hp_restored')}");
+    });
   }
 
   void _showCollectionDialog(String title, String message) {
@@ -1039,13 +1259,17 @@ class _SudokuScreenState extends State<SudokuScreen>
 
   void _triggerSuccessSequence() async {
     if (!mounted) return;
-    final BuildContext currentContext = context;
+
+    // 1초 지연 (사용자 요청)
+    await Future.delayed(const Duration(seconds: 1));
+
+    if (!mounted) return;
 
     setState(() {
       _isSuccessAnimation = true;
-      _showPurifiedOverlay = true; // "PURIFIED!" 오버레이 표시
       _selectedRow = null;
       _selectedCol = null;
+      
       if (!_dungeonMap.currentRoom.isCleared) {
         final room = _dungeonMap.currentRoom;
         room.isCleared = true;
@@ -1071,92 +1295,32 @@ class _SudokuScreenState extends State<SudokuScreen>
             ),
           ],
         );
-
-        // 수집형 도감: 골동품 10% 드롭 판정
-        CollectionService().tryDropArtifact(
-          onUnlock: (msg, artifact) {
-            _addCombatLog(msg);
-            _showCollectionDialog(
-              "정화가의 골동품 발견",
-              "$msg\n\n${artifact.description}",
-            );
-          },
-        );
-
-        if (_dungeonMap.purificationRate >= 1.0) {
-          if (!_userData.stats.unlockedTitles.contains("던전의 축복")) {
-            _userData.stats = _userData.stats.copyWith(
-              unlockedTitles: [..._userData.stats.unlockedTitles, "던전의 축복"],
-              activeTitle: "던전의 축복",
-            );
-            _addCombatLog("✨ 전설적인 업적 달성! '던전의 축복' 칭호를 획득했습니다! ✨");
-          }
-        }
-
-        _saveGlobalData();
-
-        if (room.type == RoomType.boss) {
-          _isDungeonCleared = true;
-          _addCombatLog("🎉 축하합니다! 던전의 핵심 근원인 보스를 처치하여 던전이 정화되었습니다!");
-        }
       }
-      _showMoveButtons = true;
     });
 
-    // 2초 대기 후 오버레이 제거 (사용자 요청: 2초 뒤에 다음 방으로 이동하는 연출의 기반)
-    await Future.delayed(const Duration(seconds: 2));
+    final (int earnedGold, int earnedXp) = _calculateReward(
+      difficulty: _getCurrentSudokuBoard().difficulty,
+      timeElapsed: _secondsElapsed,
+      mistakes: _getCurrentSudokuBoard().mistakes,
+    );
+
+    // 재화 추가 (VictoryDialog에서 최종 저장됨)
+    CurrencyService().addGold(earnedGold);
+    _userData.addXp(earnedXp);
+
     if (mounted) {
-      setState(() {
-        _showPurifiedOverlay = false;
-      });
-    }
-
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (!currentContext.mounted) return;
-
-    if (_dungeonMap.currentRoom.isCleared) {
-      final int initialUserLevel = _userData.level;
-      final (int earnedGold, int earnedXp) = _calculateReward(
-        difficulty: _getCurrentSudokuBoard().difficulty,
-        timeElapsed: _secondsElapsed,
-        mistakes: _getCurrentSudokuBoard().mistakes,
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => VictoryDialog(
+          earnedGold: earnedGold,
+          earnedXp: earnedXp,
+          onConfirm: () {
+            Navigator.pop(context); // 다이얼로그 닫기
+            Navigator.pop(context); // 게임 화면 닫고 로비로 이동
+          },
+        ),
       );
-
-      _userData.addGold(earnedGold);
-      _userData.addXp(earnedXp);
-
-      int bonusGoldFromLevelUp = 0;
-      final bool leveledUp = _userData.level > initialUserLevel;
-      if (leveledUp) {
-        bonusGoldFromLevelUp = (_userData.level - initialUserLevel) * 50;
-        _userData.addGold(bonusGoldFromLevelUp);
-      }
-      await _saveGlobalData();
-
-      // 랭킹 저장 (데일리 도전/일반 공통)
-      final entry = RankingEntry(
-        playerName: "Player", // 추후 유저 이름 설정 기능 추가 가능
-        score: earnedGold + earnedXp, // 점수 계산 방식
-        level: _userData.level,
-        timeInSeconds: _secondsElapsed,
-        date: DateTime.now(),
-        stageName: "Stage ${_dungeonMap.currentRoom.type.name}",
-      );
-      await RankingManager.saveRanking(entry);
-
-      _addCombatLog("✨ 퍼즐 해결! 기록: ${_formatTime(_secondsElapsed)}");
-      _addCombatLog("💰 획득 골드: $earnedGold G / 💎 획득 경험치: $earnedXp XP");
-
-      if (leveledUp) {
-        _addCombatLog(
-          "🎊 레벨업! Lv.${_userData.level - initialUserLevel} 상승! 보너스: $bonusGoldFromLevelUp G",
-        );
-      }
-
-      _addCombatLog("현재 상태: Lv.${_userData.level} / ${_userData.gold} G");
-
-      setState(() => _isSuccessAnimation = false);
     }
   }
 
@@ -1205,6 +1369,10 @@ class _SudokuScreenState extends State<SudokuScreen>
         _monsterNotifier.value = nextMonster;
 
         _addCombatLog("Map (${_dungeonMap.currentX}, ${_dungeonMap.currentY}) - 새로운 정화 구역");
+
+        // 신규 방 진입 시 위젯 강제 리빌드를 위한 키 갱신
+        _gridUniqueKey = UniqueKey();
+
 
         // 몬스터 도감 발견 기록
         if (_currentMonster.name != "없음") {
@@ -1373,6 +1541,7 @@ class _SudokuScreenState extends State<SudokuScreen>
           },
         ),
         PurificationGauge(progress: _roomPurificationRate),
+        _buildArtifactRow(),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -1386,6 +1555,69 @@ class _SudokuScreenState extends State<SudokuScreen>
         ),
         const Divider(),
       ],
+    );
+  }
+
+  Widget _buildArtifactRow() {
+    final unlockedArtifactIds = _userData.stats.unlockedArtifacts;
+    final ownedArtifacts = CollectionTemplates.artifacts
+        .where((a) => unlockedArtifactIds.contains(a.id))
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      child: Row(
+        children: [
+          const Icon(Icons.account_balance, color: Colors.amberAccent, size: 16),
+          const SizedBox(width: 8),
+          const Text(
+            "보유 유물:",
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ownedArtifacts.isEmpty
+                ? const Text(
+                    "장착된 유물 없음",
+                    style: TextStyle(color: Colors.white24, fontSize: 12),
+                  )
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: ownedArtifacts.map((artifact) {
+                        return Tooltip(
+                          message: "${artifact.name}\n${artifact.description}",
+                          child: GestureDetector(
+                            onTap: () {
+                              _showCollectionDialog(
+                                artifact.name,
+                                artifact.description,
+                              );
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.amberAccent.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.amberAccent.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Icon(
+                                artifact.icon,
+                                color: Colors.amberAccent,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1525,6 +1757,7 @@ class _SudokuScreenState extends State<SudokuScreen>
 
   Widget _buildSudokuBoardWidget() {
     return Container(
+      key: _gridUniqueKey, // 위젯 완벽 강제 초기화를 위해 상위 Container에 Key 부여
       padding: const EdgeInsets.all(8.0),
       child: ValueListenableBuilder<SudokuBoard>(
         valueListenable: _boardNotifier,
@@ -1539,7 +1772,6 @@ class _SudokuScreenState extends State<SudokuScreen>
                     valueListenable: _flashingCellNotifier,
                     builder: (context, flashingCell, _) {
                       return SudokuGrid(
-                        key: ValueKey('grid_${_dungeonMap.currentX}_${_dungeonMap.currentY}'),
                         board: board,
                         onCellTap: _onCellTapped,
                         selectedRow: _selectedRow,
@@ -1552,9 +1784,20 @@ class _SudokuScreenState extends State<SudokuScreen>
                         errorRow: _errorRow,
                         errorCol: _errorCol,
                         conflictAnimationValue: _conflictAnimationValue,
+                        foggyCells: _foggyCells,
                       );
                     },
                   ),
+                  // 데미지 팝업 렌더링
+                  ..._damagePopups.map((data) => DamagePopup(
+                        key: data.key,
+                        data: data,
+                        onComplete: () {
+                          setState(() {
+                            _damagePopups.remove(data);
+                          });
+                        },
+                      )),
                   if (_roomPurificationRate >= 1.0)
                     Positioned.fill(
                       child: Container(
@@ -1722,6 +1965,7 @@ class _SudokuScreenState extends State<SudokuScreen>
                   valueListenable: _monsterNotifier,
                   builder: (context, monster, _) {
                     return Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         MonsterStatus(key: ObjectKey(monster), monster: monster),
                         ValueListenableBuilder<List<String>>(
@@ -1758,17 +2002,19 @@ class _SudokuScreenState extends State<SudokuScreen>
                       ? null
                       : (n) => _handleNumberInput(n),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    "Map Pos: (${_dungeonMap.currentX}, ${_dungeonMap.currentY})",
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.blueGrey,
+                if (constraints.maxHeight > 560) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0),
+                    child: Text(
+                      "Map Pos: (${_dungeonMap.currentX}, ${_dungeonMap.currentY})",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.blueGrey,
+                      ),
                     ),
                   ),
-                ),
-                Transform.scale(scale: 0.8, child: _buildQuickSlots()),
+                  Transform.scale(scale: 0.75, child: _buildQuickSlots()),
+                ],
               ],
             );
           }
@@ -1788,9 +2034,9 @@ class _SudokuScreenState extends State<SudokuScreen>
         ),
       );
     }
-    return Container(
-      color: Colors.transparent,
-      child: Stack(
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
+      body: Stack(
         children: [
           AnimatedBuilder(
             animation: _screenShakeAnimation,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/user_data.dart';
 import '../models/achievement_model.dart';
+import '../services/sync_manager.dart';
 
 class CurrencyService extends ChangeNotifier {
   static final CurrencyService _instance = CurrencyService._internal();
@@ -72,6 +73,8 @@ class CurrencyService extends ChangeNotifier {
   Future<void> _saveAndNotify() async {
     if (_userData != null) {
       await LocalStorageService.saveUserData(_userData!);
+      // 클라우드 동기화 트리거
+      SyncManager().syncOnSave(_userData!);
     }
     notifyListeners();
   }

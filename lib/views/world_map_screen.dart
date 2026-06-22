@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/user_data.dart';
 import '../models/dungeon_theme.dart';
+import 'shop_screen.dart'; // 상점 화면 임포트
 
 class WorldMapScreen extends StatelessWidget {
   final UserData userData;
@@ -28,6 +29,17 @@ class WorldMapScreen extends StatelessWidget {
           style: GoogleFonts.cinzel(fontWeight: FontWeight.bold),
         ),
         backgroundColor: const Color(0xFF1E293B),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shopping_cart, color: Colors.amberAccent),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ShopScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: Stack(
         children: [

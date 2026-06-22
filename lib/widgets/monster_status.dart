@@ -134,8 +134,11 @@ class _MonsterStatusState extends State<MonsterStatus>
   @override
   Widget build(BuildContext context) {
     if (widget.monster.name.isEmpty || widget.monster.maxHp <= 0) {
-      return const SizedBox(height: 80);
+      return const SizedBox(height: 40);
     }
+
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final bool isCompact = screenHeight < 750;
 
     double hpPercentage = (widget.monster.maxHp > 0)
         ? (widget.monster.currentHp / widget.monster.maxHp).clamp(0.0, 1.0)
@@ -143,12 +146,16 @@ class _MonsterStatusState extends State<MonsterStatus>
 
     return RepaintBoundary(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
-        margin: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: EdgeInsets.symmetric(
+          vertical: isCompact ? 4.0 : 8.0,
+          horizontal: 12.0,
+        ),
+        margin: EdgeInsets.symmetric(
+          horizontal: 16.0,
+          vertical: isCompact ? 2.0 : 4.0,
+        ),
         decoration: BoxDecoration(
-          color: const Color(
-            0xFF1E293B,
-          ).withValues(alpha: 0.9), // 메인 배경과 통일감 있는 다크 컬러
+          color: const Color(0xFF1E293B).withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white10, width: 1),
           boxShadow: [
@@ -163,60 +170,56 @@ class _MonsterStatusState extends State<MonsterStatus>
           children: [
             Text(
               widget.monster.name,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: isCompact ? 15 : 20,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
               ),
             ),
-            const SizedBox(height: 8),
-
-            // 몬스터 이미지 및 셰이크/플래시/사망 효과
-            FadeTransition(
-              opacity: _deathAnimation,
-              child: AnimatedBuilder(
-                animation: Listenable.merge([_shakeController, _flashController]),
-                builder: (context, child) {
-                return Transform.translate(
-                  offset: Offset(_shakeAnimation.value, 0),
-                  child: Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: Colors.indigo.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.indigoAccent.withValues(alpha: 0.3),
-                        width: 2,
-                      ),
-                    ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Icon(
-                          Icons.psychology_alt,
-                          color: Colors.white70,
-                          size: 45,
-                        ),
-                        // 레드 플래시 오버레이
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _colorAnimation.value,
+            if (!isCompact) ...[
+              const SizedBox(height: 8),
+              FadeTransition(
+                opacity: _deathAnimation,
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_shakeController, _flashController]),
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(_shakeAnimation.value, 0),
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.indigoAccent.withValues(alpha: 0.3),
+                            width: 2,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // HP 바 및 진동 효과
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            const Icon(
+                              Icons.psychology_alt,
+                              color: Colors.white70,
+                              size: 45,
+                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _colorAnimation.value,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+            SizedBox(height: isCompact ? 4 : 12),
             AnimatedBuilder(
               animation: _shudderController,
               builder: (context, child) {
@@ -232,11 +235,9 @@ class _MonsterStatusState extends State<MonsterStatus>
                             children: [
                               Container(
                                 width: barWidth,
-                                height: 14,
+                                height: isCompact ? 10 : 14,
                                 decoration: BoxDecoration(
-                                  color: Colors.red[900]?.withValues(
-                                    alpha: 0.5,
-                                  ),
+                                  color: Colors.red[900]?.withValues(alpha: 0.5),
                                   borderRadius: BorderRadius.circular(7),
                                 ),
                               ),
@@ -245,7 +246,7 @@ class _MonsterStatusState extends State<MonsterStatus>
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
                                   width: barWidth * hpPercentage,
-                                  height: 14,
+                                  height: isCompact ? 10 : 14,
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
@@ -256,9 +257,7 @@ class _MonsterStatusState extends State<MonsterStatus>
                                     borderRadius: BorderRadius.circular(7),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.green.withValues(
-                                          alpha: 0.4,
-                                        ),
+                                        color: Colors.green.withValues(alpha: 0.4),
                                         blurRadius: 4,
                                       ),
                                     ],
@@ -267,11 +266,11 @@ class _MonsterStatusState extends State<MonsterStatus>
                               ),
                               Text(
                                 '${widget.monster.currentHp} / ${widget.monster.maxHp}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 11,
+                                  fontSize: isCompact ? 9 : 11,
                                   fontWeight: FontWeight.w900,
-                                  shadows: [
+                                  shadows: const [
                                     Shadow(color: Colors.black, blurRadius: 2),
                                   ],
                                 ),

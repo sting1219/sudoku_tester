@@ -98,14 +98,32 @@ class GameController {
     return false;
   }
 
-  /// Calculates damage dealt based on input number and player stats.
+  /// Calculates damage dealt based on input number and player stats, including collection bonus.
   static int calculateDamage(
     int number,
     PlayerCombatStats stats,
     Difficulty difficulty,
+    int collectionUnlockedCount,
   ) {
     final double difficultyMultiplier =
         _difficultyDamageMultiplier[difficulty] ?? 1.0;
-    return (number * stats.attackPower * difficultyMultiplier).toInt();
+        
+    // 도감 해금 수(몬스터 + 유물)에 따른 보너스 데미지 연산 (개당 2% 증가, 최대 100%)
+    double collectionBonus = 1.0 + (collectionUnlockedCount * 0.02);
+    if (collectionBonus > 2.0) collectionBonus = 2.0;
+
+    return (number * stats.attackPower * difficultyMultiplier * collectionBonus).toInt();
+  }
+
+  /// Calculates damage taken on a wrong answer, applying collection-based penalty reduction.
+  static int calculatePenalty(
+    int baseDamage,
+    int collectionUnlockedCount,
+  ) {
+    // 도감 해금 수에 따른 페널티 감소 (10종당 20% 감소, 최대 60% 감소)
+    double penaltyReduction = ((collectionUnlockedCount ~/ 10) * 0.20);
+    if (penaltyReduction > 0.60) penaltyReduction = 0.60;
+
+    return (baseDamage * (1.0 - penaltyReduction)).toInt();
   }
 }

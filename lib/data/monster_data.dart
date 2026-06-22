@@ -9,6 +9,7 @@ class MonsterEntry {
   final int rewardGold;
   final int rewardXp;
   final String deepLore; // 600자 이상의 생태 및 탄생 비화
+  final bool isBoss; // 보스 여부
 
   const MonsterEntry({
     required this.id,
@@ -19,6 +20,7 @@ class MonsterEntry {
     required this.rewardGold,
     required this.rewardXp,
     required this.deepLore,
+    this.isBoss = false,
   });
 }
 

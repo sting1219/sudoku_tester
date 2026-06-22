@@ -37,9 +37,9 @@ class _CombatLogState extends State<CombatLog> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48, // Fixed height for max 2 lines of log
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 5.0),
+      height: 40, // Fixed height for max 2 lines of log
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 3.0),
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(8),

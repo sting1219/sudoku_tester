@@ -1,8 +1,10 @@
+import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/user_data.dart';
 import '../models/achievement_model.dart';
+import '../services/sync_manager.dart';
 
-class AchievementService {
+class AchievementService extends ChangeNotifier {
   static final AchievementService _instance = AchievementService._internal();
   factory AchievementService() => _instance;
   AchievementService._internal();
@@ -136,10 +138,18 @@ class AchievementService {
       userData.stats.unlockedAchievementIds.add(id);
       _achievementController.add(achievement);
       LocalStorageService.saveUserData(userData);
+      // 클라우드 동기화 트리거
+      SyncManager().syncOnSave(userData);
     }
   }
 
+  void init(UserData userData) {
+    // 초기 데이터 로드 시 필요한 로직이 있다면 추가
+  }
+
+  @override
   void dispose() {
     _achievementController.close();
+    super.dispose();
   }
 }

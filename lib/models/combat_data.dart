@@ -1,5 +1,5 @@
-// lib/models/combat_data.dart
 import 'package:sudoku_game/models/dungeon.dart'; // RoomType 임포트
+import '../services/localization_service.dart';
 
 class Monster {
   final String name;
@@ -9,6 +9,7 @@ class Monster {
   final int rewardGold;
   final int rewardXp;
   final String description; // 몬스터 상세 설명 추가
+  final bool isBoss; // 보스 여부
 
   Monster({
     required this.name,
@@ -18,18 +19,19 @@ class Monster {
     required this.rewardGold,
     required this.rewardXp,
     this.description = "이 존재는 아직 정체의 많은 부분이 베일에 싸여 있습니다.",
+    this.isBoss = false,
   }) : currentHp = currentHp ?? maxHp;
 
   // 전투가 없는 방을 위한 빈 몬스터 객체 생성
   factory Monster.empty() {
     return Monster(
-      name: "없음",
+      name: L10n.t('monster_none'),
       maxHp: 1, // 최소 HP
       currentHp: 1,
       attackPower: 0,
       rewardGold: 0,
       rewardXp: 0,
-      description: "전투가 없는 평화로운 공간입니다.",
+      description: L10n.t('monster_none_desc'),
     );
   }
 
@@ -43,6 +45,7 @@ class Monster {
     int? rewardGold,
     int? rewardXp,
     String? description,
+    bool? isBoss,
   }) {
     return Monster(
       name: name ?? this.name,
@@ -52,6 +55,7 @@ class Monster {
       rewardGold: rewardGold ?? this.rewardGold,
       rewardXp: rewardXp ?? this.rewardXp,
       description: description ?? this.description,
+      isBoss: isBoss ?? this.isBoss,
     );
   }
 }
@@ -76,27 +80,34 @@ class PlayerCombatStats {
       attackPower: attackPower ?? this.attackPower,
     );
   }
+
+  PlayerCombatStats heal(int amount) {
+    int newHp = (currentHp + amount).clamp(0, maxHp);
+    return copyWith(currentHp: newHp);
+  }
 }
 
 // Predefined Monsters
 class MonsterTemplates {
   static Monster numberSlime() {
     return Monster(
-      name: "숫자 슬라임",
+      name: L10n.t('monster_slime_name'),
       maxHp: 2000,
       attackPower: 10, // Slime deals 10 damage on player error
       rewardGold: 50,
       rewardXp: 100,
+      description: L10n.t('monster_slime_desc'),
     );
   }
 
   static Monster numberGolem() {
     return Monster(
-      name: "숫자 골렘",
+      name: L10n.t('monster_golem_name'),
       maxHp: 5000,
       attackPower: 25,
       rewardGold: 150,
       rewardXp: 300,
+      description: L10n.t('monster_golem_desc'),
     );
   }
 
@@ -158,6 +169,7 @@ class MonsterTemplates {
           rewardXp: 1200,
           description:
               "시작의 숲 전체를 다스리는 거대한 존재입니다. 그가 내뿜는 정화의 기운은 혼돈에 물든 수많은 숫자를 원래대로 되돌리는 힘이 있습니다.",
+          isBoss: true,
         ),
       ],
       "타오르는 심연의 굴": [
@@ -205,6 +217,7 @@ class MonsterTemplates {
           rewardXp: 3000,
           description:
               "동굴 깊은 곳, 만물을 태우는 태초의 불꽃을 다스리는 절대자입니다. 그의 분노는 모든 논리를 재로 만들어버릴 만큼 강력합니다.",
+          isBoss: true,
         ),
       ],
       "꽁꽁 얼어붙은 성벽": [
@@ -252,6 +265,7 @@ class MonsterTemplates {
           rewardXp: 6000,
           description:
               "얼어붙은 성의 진정한 주인입니다. 차갑고 고결한 그녀의 마음은 어떤 논리적 허점도 용납하지 않는 완벽함을 지향합니다.",
+          isBoss: true,
         ),
       ],
       "공허의 마법 도서관": [
@@ -299,6 +313,7 @@ class MonsterTemplates {
           rewardXp: 14000,
           description:
               "도서관 가장 깊은 곳, 공허의 지식을 깨우친 존재입니다. 그는 정답이 없는 퍼즐을 만들어 모든 존재를 무(無)로 돌리고자 합니다.",
+          isBoss: true,
         ),
       ],
       "황금빛 신들의 성전": [
@@ -346,6 +361,7 @@ class MonsterTemplates {
           rewardXp: 40000,
           description:
               "숫자 정원의 모든 질서와 빛의 근원입니다. 그는 정화의 마지막 시험을 주관하며, 오직 완벽한 논리를 가진 자만을 축복할 것입니다.",
+          isBoss: true,
         ),
       ],
     };
@@ -394,6 +410,7 @@ class MonsterTemplates {
       attackPower: (selected.attackPower * levelScale).toInt(),
       rewardGold: (selected.rewardGold * levelScale).toInt(),
       rewardXp: (selected.rewardXp * levelScale).toInt(),
+      isBoss: selected.isBoss,
     );
   }
 

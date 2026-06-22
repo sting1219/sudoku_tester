@@ -93,4 +93,13 @@ class SoundManager {
       print("Sound play error: $e");
     }
   }
+
+  Future<void> playVictorySound() async {
+    try {
+      await _player.setPlaybackRate(1.0);
+      await _player.play(AssetSource('sounds/victory.mp3'));
+    } catch (e) {
+      print("Sound play error: $e");
+    }
+  }
 }

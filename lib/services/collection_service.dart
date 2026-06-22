@@ -119,4 +119,28 @@ class CollectionService {
 
     CurrencyService().saveCurrentData();
   }
+
+  /// 5. 몬스터 카드 획득 로직 (몬스터 처치 시 15% 확률 드롭)
+  void tryDropMonsterCard(String monsterName, {void Function()? onDrop}) {
+    final userData = CurrencyService().userData;
+
+    // 이미 카드를 획득했으면 무시
+    if (userData.stats.obtainedMonsterCards.contains(monsterName)) return;
+
+    // 15% 확률로 드롭
+    if (_random.nextDouble() <= 0.15) {
+      userData.stats.obtainedMonsterCards.add(monsterName);
+      CurrencyService().saveCurrentData();
+
+      if (onDrop != null) {
+        onDrop();
+      }
+    }
+  }
+
+  /// 6. 도감 해금 총 개수 반환 (유물 개수 + 몬스터 카드 획득 개수)
+  int get totalUnlockedCount {
+    final stats = CurrencyService().userData.stats;
+    return stats.obtainedMonsterCards.length + stats.unlockedArtifacts.length;
+  }
 }

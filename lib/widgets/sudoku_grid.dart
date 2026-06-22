@@ -19,6 +19,7 @@ class SudokuGrid extends StatelessWidget {
   final int? errorRow;
   final int? errorCol;
   final double conflictAnimationValue;
+  final Set<String> foggyCells; // 안개 낀 칸 좌표 ("row,col")
 
   const SudokuGrid({
     super.key,
@@ -35,6 +36,7 @@ class SudokuGrid extends StatelessWidget {
     this.errorRow,
     this.errorCol,
     this.conflictAnimationValue = 0.0,
+    this.foggyCells = const {},
   });
 
   @override
@@ -118,6 +120,7 @@ class SudokuGrid extends StatelessWidget {
                   isFlashing: isFlashing,
                   isSuccess: isSuccess,
                   isShake: row == errorRow && col == errorCol,
+                  isFoggy: foggyCells.contains("$row,$col"),
                   onTap: () => onCellTap(row, col),
                   onLongPress: () => onCellLongPress?.call(row, col),
                 );
@@ -155,6 +158,7 @@ class SudokuCell extends StatelessWidget {
   final bool isFlashing;
   final bool isSuccess;
   final bool isShake;
+  final bool isFoggy;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
@@ -172,6 +176,7 @@ class SudokuCell extends StatelessWidget {
     required this.isFlashing,
     required this.isSuccess,
     required this.isShake,
+    this.isFoggy = false,
     required this.onTap,
     required this.onLongPress,
   });
@@ -198,7 +203,7 @@ class SudokuCell extends StatelessWidget {
       );
     } else if (isSameValue) {
       cellColor = Color.alphaBlend(
-        Colors.blueAccent.withValues(alpha: 0.2),
+        Colors.blueAccent.withValues(alpha: 0.4),
         baseColor,
       );
     } else if (isRelated) {
@@ -233,7 +238,9 @@ class SudokuCell extends StatelessWidget {
                 : null,
             border: isSelected
                 ? Border.all(color: Colors.white, width: 3.0)
-                : Border(
+                : isSameValue
+                    ? Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5)
+                    : Border(
                     top: BorderSide(
                       width: row % 3 == 0 ? 3.0 : 0.5,
                       color: row % 3 == 0
@@ -263,7 +270,20 @@ class SudokuCell extends StatelessWidget {
           child: Center(
             child: isSuccess
                 ? const Icon(Icons.check_circle, color: Colors.white, size: 24)
-                : _buildCellContent(),
+                : Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      _buildCellContent(),
+                      if (isFoggy)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 500),
+                          color: Colors.grey.withValues(alpha: 0.9),
+                          child: const Center(
+                            child: Icon(Icons.cloud, color: Colors.white70, size: 20),
+                          ),
+                        ),
+                    ],
+                  ),
           ),
         ),
       ),

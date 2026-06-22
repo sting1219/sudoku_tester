@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:web/web.dart' as web;
 import '../models/ranking_model.dart';
 import 'package:intl/intl.dart';
 
@@ -22,11 +21,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     _loadRankings();
   }
 
-  void _loadRankings() {
-    final String? jsonStr = web.window.localStorage.getItem('local_rankings');
-    setState(() {
-      _rankings = RankingManager.parseRankings(jsonStr);
-    });
+  Future<void> _loadRankings() async {
+    final rankings = await RankingManager.loadRankings();
+    if (mounted) {
+      setState(() {
+        _rankings = rankings;
+      });
+    }
   }
 
   @override
